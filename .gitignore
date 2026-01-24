@@ -1,4 +1,4 @@
-# Virtual environment
+# Virtual environments
 .venv/
 .temp_env/
 
@@ -9,10 +9,6 @@ __pycache__/
 # Environment variables
 .env
 
-# Logs & text dumps
+# Logs
 *.log
 *.txt
-
-# OS files
-.DS_Store
-Thumbs.db
