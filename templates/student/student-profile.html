@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}My Profile - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+    {% set active_page = 'profile' %}
+    {% include 'includes/student_sidebar.html' %}
+
+    <main class="main">
+        <header class="topbar">
+            <div class="header-title">
+                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">My Profile</h2>
+            </div>
+            <div class="user-area">
+                <button class="notification-btn" aria-label="Notifications">🔔
+                    {% if new_updates_count > 0 %}
+                    <span class="notification-dot"></span>
+                    {% endif %}
+                </button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div class="page-header">
+                <h1>My Profile</h1>
+                <p class="page-subtitle">Manage your account information</p>
+            </div>
+
+            <!-- Header Card -->
+            <div class="profile-header-card">
+                <div class="profile-avatar-large">
+                    {{ user.name.split(' ')[0][0] }}{{ user.name.split(' ')[1][0] if ' ' in user.name else '' }}
+                </div>
+                <div class="profile-info">
+                    <h1>{{ user.name }}</h1>
+                    <div class="profile-meta">
+                        <span>Roll: {{ student.roll_number if student else '--' }}</span>
+                        <span>Dept: {{ student.department if student else '--' }}</span>
+                        <span>Student</span>
+                    </div>
+                    <div class="status-badge">Active</div>
+                </div>
+            </div>
+
+            <!-- Details Section -->
+            <div class="card">
+                <div class="card-header"
+                    style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
+                    <h3 style="margin: 0; font-size: 1.1rem;">Personal Information</h3>
+                </div>
+
+                <div class="details-grid">
+                    <div class="detail-item">
+                        <div class="detail-label">Full Name</div>
+                        <div class="detail-value">{{ user.name }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Email Address</div>
+                        <div class="detail-value">{{ user.email }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Roll Number</div>
+                        <div class="detail-value">{{ student.roll_number if student else '--' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Department</div>
+                        <div class="detail-value">{{ student.department if student else '--' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Year / Semester</div>
+                        <div class="detail-value">
+                            {{ student.year if student else '--' }} / {{ student.semester if student else '--' }}
+                        </div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Section</div>
+                        <div class="detail-value">{{ student.section if student else '--' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Parent Name</div>
+                        <div class="detail-value">{{ student.parent_name if student else '--' }}</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-label">Parent Phone</div>
+                        <div class="detail-value">{{ student.parent_phone if student else '--' }}</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Fees - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'fees' %}
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Fee Management</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div id="feesAlert" class="alert" style="display: block;">
+        {% for category, message in messages %}
+        <div class="alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h1>Fees Management</h1>
+        <p class="page-subtitle">Manage student fee records, payments, and dues</p>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <button class="btn btn-primary" onclick="showFeeModal()">
+            <span class="action-icon">➕</span> Add Fee Record
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <form action="{{ url_for('admin.fees') }}" method="GET" class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Search</label>
+            <input type="text" name="search" class="form-input" placeholder="ID or name..." value="{{ search or '' }}">
+          </div>
+          <div class="filter-group">
+            <label>Semester</label>
+            <select name="semester" class="form-select" onchange="this.form.submit()">
+              <option value="">All Semesters</option>
+              {% for s in [1, 2, 3, 4, 5, 6, 7, 8] %}
+              <option value="{{ s }}" {% if semester==s %}selected{% endif %}>Semester {{ s
+                }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select name="status" class="form-select" onchange="this.form.submit()">
+              <option value="">All Statuses</option>
+              <option value="paid" {% if status=='paid' %}selected{% endif %}>Paid</option>
+              <option value="partially_paid" {% if status=='partially_paid' %}selected{% endif %}>
+                Partially Paid</option>
+              <option value="pending" {% if status=='pending' %}selected{% endif %}>Pending</option>
+            </select>
+          </div>
+          <div class="filter-actions-simple">
+            <button type="submit" class="btn btn-primary">Apply</button>
+            {% if search or semester or status %}
+            <a href="{{ url_for('admin.fees') }}" class="btn btn-outline-secondary"
+              style="text-decoration:none;">Clear</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-card--blue">
+          <div class="stat-header">
+            <div class="stat-label">Total Records</div>
+            <div class="stat-icon">🧾</div>
+          </div>
+          <div class="stat-value">{{ total_records }}</div>
+          <div class="stat-subtext">Payment entries</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-header">
+            <div class="stat-label">Total Collected</div>
+            <div class="stat-icon">💵</div>
+          </div>
+          <div class="stat-value">₹{{ "{:,.2f}".format(total_collected) }}</div>
+          <div class="stat-subtext">Received so far</div>
+        </div>
+        <div class="stat-card stat-card--amber">
+          <div class="stat-header">
+            <div class="stat-label">Total Due</div>
+            <div class="stat-icon">⚠️</div>
+          </div>
+          <div class="stat-value">₹{{ "{:,.2f}".format(total_due) }}</div>
+          <div class="stat-subtext">Outstanding balance</div>
+        </div>
+        <div class="stat-card stat-card--sky">
+          <div class="stat-header">
+            <div class="stat-label">Partial Payments</div>
+            <div class="stat-icon">🕒</div>
+          </div>
+          <div class="stat-value">{{ partially_paid_count }}</div>
+          <div class="stat-subtext">In-progress payments</div>
+        </div>
+      </div>
+
+      <div class="dashboard-card full-width" style="margin-top: 2rem;">
+        <h3>Fee Records <span class="badge badge-info">{{ fees_records|length }} records</span></h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Student Name</th>
+                <th>Semester</th>
+                <th>Total Fee</th>
+                <th>Paid Amount</th>
+                <th>Due Amount</th>
+                <th>Status</th>
+                <th>Payment Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fee in fees_records %}
+              <tr>
+                <td>{{ fee.student.student_id }}</td>
+                <td>{{ fee.student.name }}</td>
+                <td>Sem {{ fee.semester }}</td>
+                <td>₹{{ fee.total_fee }}</td>
+                <td>₹{{ fee.paid_amount }}</td>
+                <td>₹{{ fee.due_amount }}</td>
+                <td><span
+                    class="badge badge-{{ 'success' if fee.status == 'paid' else ('warning' if fee.status == 'partially_paid' else 'danger') }}">{{
+                    fee.status|replace('_', ' ')|title }}</span></td>
+                <td>{{ fee.payment_date or '--' }}</td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon" title="Edit" data-fee='{{ fee|tojson }}'
+                      onclick='editFee(JSON.parse(this.dataset.fee))'>✏️</button>
+                    <form action="{{ url_for('admin.delete_fee', id=fee.id) }}" method="POST" style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete this fee record?');">
+                      <button type="submit" class="btn-icon delete-btn" title="Delete">🗑️</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Add Fee Modal -->
+<div id="feeModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideFeeModal()">×</span>
+    <h2>Add Fee Record</h2>
+    <form action="{{ url_for('admin.add_fee') }}" method="POST">
+      <div class="form-group">
+        <label for="student_id">Student ID</label>
+        <input type="text" id="student_id" name="student_id" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="semester">Semester</label>
+        <select id="semester" name="semester" class="form-select" required>
+          <option value="">Select Semester</option>
+          <option value="1">Semester 1</option>
+          <option value="2">Semester 2</option>
+          <option value="3">Semester 3</option>
+          <option value="4">Semester 4</option>
+          <option value="5">Semester 5</option>
+          <option value="6">Semester 6</option>
+          <option value="7">Semester 7</option>
+          <option value="8">Semester 8</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="total_fee">Total Fee</label>
+        <input type="number" id="total_fee" name="total_fee" class="form-input" min="0" oninput="calculateDue()"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="paid_amount">Paid Amount</label>
+        <input type="number" id="paid_amount" name="paid_amount" class="form-input" min="0" oninput="calculateDue()"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="due_amount">Due Amount (Read-only)</label>
+        <input type="number" id="due_amount" name="due_amount" class="form-input" readonly>
+      </div>
+      <div class="form-group">
+        <label for="payment_date">Payment Date (Optional)</label>
+        <input type="date" id="payment_date" name="payment_date" class="form-input">
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status" class="form-select" required>
+          <option value="pending">Pending</option>
+          <option value="partially_paid">Partially Paid</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideFeeModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function showFeeModal() {
+    document.getElementById('feeModal').style.display = 'block';
+    document.querySelector('#feeModal h2').textContent = 'Add Fee Record';
+    document.querySelector('#feeModal form').action = "{{ url_for('admin.add_fee') }}";
+    document.querySelector('#feeModal form').reset();
+  }
+
+  function hideFeeModal() {
+    document.getElementById('feeModal').style.display = 'none';
+  }
+
+  function editFee(fee) {
+    showFeeModal();
+    document.querySelector('#feeModal h2').textContent = 'Edit Fee Record';
+    document.querySelector('#feeModal form').action = `/admin/fees/edit/${fee.id}`;
+
+    document.getElementById('student_id').value = fee.student_id;
+    document.getElementById('semester').value = fee.semester;
+    document.getElementById('total_fee').value = fee.total_fee;
+    document.getElementById('paid_amount').value = fee.paid_amount;
+    document.getElementById('due_amount').value = fee.due_amount;
+    document.getElementById('status').value = fee.status;
+    document.getElementById('payment_date').value = fee.payment_date;
+  }
+
+  function calculateDue() {
+    const total = parseFloat(document.getElementById('total_fee').value) || 0;
+    const paid = parseFloat(document.getElementById('paid_amount').value) || 0;
+    const due = total - paid;
+    document.getElementById('due_amount').value = due >= 0 ? due : 0;
+
+    const statusSelect = document.getElementById('status');
+    if (due <= 0 && total > 0) {
+      statusSelect.value = 'paid';
+    } else if (paid > 0) {
+      statusSelect.value = 'partially_paid';
+    } else {
+      statusSelect.value = 'pending';
+    }
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function (event) {
+    if (event.target == document.getElementById('feeModal')) {
+      hideFeeModal();
+    }
+  }
+</script>
+
+
+</div>
+{% endblock %}

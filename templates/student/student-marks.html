@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Student Marks - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'marks' %}
+  {% include 'includes/student_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">My Marks</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div id="studentMarksAlert"></div>
+
+      <div class="page-header">
+        <h1>My Marks</h1>
+        <p class="page-subtitle">View your academic performance and detailed subject marks</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">📊</div>
+          <div class="stat-content">
+            <div class="stat-label">Current CGPA</div>
+            <div class="stat-value" id="currentCGPA">--</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🏆</div>
+          <div class="stat-content">
+            <div class="stat-label">Credits Earned</div>
+            <div class="stat-value" id="creditsEarned">--</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📈</div>
+          <div class="stat-content">
+            <div class="stat-label">Overall Percentage</div>
+            <div class="stat-value" id="overallPercentage">--</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📚</div>
+          <div class="stat-content">
+            <div class="stat-label">Backlog Subjects</div>
+            <div class="stat-value" id="backlogSubjects">--</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <div class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Semester</label>
+            <select id="semesterFilter" class="form-select" onchange="studentMarks.filterSemesterCards()">
+              <option value="">All Semesters</option>
+              <!-- Options populated by JS -->
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-card full-width" style="margin-top: 32px;">
+        <h3>Semester Overview <span class="badge badge-info" id="filteredSemesterCount">-- semesters</span></h3>
+        <div id="semesterCardsContainer" class="semester-cards-grid">
+          <!-- Semester cards populated by JS -->
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Modal -->
+  <div id="notificationModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="toggleNotificationModal()">×</span>
+      <h2>Notifications History</h2>
+      <div class="notification-list" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+        {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement-item" style="padding: 15px 0; border-bottom: 1px solid var(--border-color);">
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px; color: var(--text-primary);">{{
+            ann.title }}</div>
+          <p class="text-muted" style="margin: 0 0 4px; font-size: 0.9rem;">{{ ann.content }}</p>
+          <div class="text-muted small" style="font-size: 0.8rem;">{{ ann.date }} • <span class="badge badge-info">{{
+              ann.priority|capitalize }}</span></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center">No notifications found.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleNotificationModal() {
+      const modal = document.getElementById('notificationModal');
+      if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+      } else {
+        modal.style.display = 'block';
+      }
+    }
+
+    // Bind bell click
+    const notificationBtn = document.querySelector('.notification-btn');
+    if (notificationBtn) {
+      notificationBtn.onclick = toggleNotificationModal;
+    }
+
+    // Close on outside click
+    window.onclick = function (event) {
+      const modal = document.getElementById('notificationModal');
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+  </script>
+</div>
+
+<style>
+  .semester-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 20px;
+  }
+
+  .semester-card {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 20px;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .semester-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  .semester-card h4 {
+    margin-top: 0;
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+    color: var(--text-primary);
+  }
+
+  .semester-card.has-backlog {
+    border-top: 4px solid var(--error-color);
+  }
+
+  .semester-card.completed {
+    border-top: 4px solid var(--success-color);
+  }
+
+  .semester-card.on-going {
+    border-top: 4px solid var(--info-color, #17a2b8);
+  }
+
+  .status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+  }
+
+  .bg-danger {
+    background-color: var(--error-color);
+    color: white;
+  }
+
+  .bg-success {
+    background-color: var(--success-color);
+    color: white;
+  }
+
+  .bg-info {
+    background-color: var(--info-color, #17a2b8);
+    /* Fallback to standard info blue if var not defined */
+    color: white;
+  }
+</style>
+
+<!-- Core Scripts -->
+<script src="/static/js/database.js"></script>
+<script src="/static/js/auth.js"></script>
+<script>
+  const studentMarks = {
+    marksData: null,
+
+    init() {
+      this.loadMarksData();
+    },
+
+    async loadMarksData() {
+      try {
+        const response = await fetch("{{ url_for('student.fetch_marks_data') }}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch marks');
+
+        const data = await response.json();
+        this.marksData = data;
+
+        this.renderStats(data.stats);
+        this.renderSemesters(data.semester_data);
+        this.populateFilter(data.semester_data);
+
+      } catch (error) {
+        console.error(error);
+        document.getElementById('studentMarksAlert').innerHTML =
+          `<div class="alert alert-danger">${error.message}</div>`;
+      }
+    },
+
+    renderStats(stats) {
+      document.getElementById('currentCGPA').textContent = stats.cgpa;
+      document.getElementById('creditsEarned').textContent = stats.earned_credits;
+      document.getElementById('overallPercentage').textContent = stats.overall_percentage + '%';
+      document.getElementById('backlogSubjects').textContent = stats.backlogs;
+    },
+
+    renderSemesters(semData, filterSem = null) {
+      const container = document.getElementById('semesterCardsContainer');
+      let semesters = Object.keys(semData).sort();
+
+      if (filterSem) {
+        semesters = semesters.filter(s => s === filterSem);
+      }
+
+      document.getElementById('filteredSemesterCount').textContent = `${semesters.length} semesters`;
+
+      if (semesters.length === 0) {
+        container.innerHTML = '<div class="text-center p-4">No marks data found</div>';
+        return;
+      }
+
+      container.innerHTML = semesters.map(sem => {
+        const subjects = semData[sem].subjects || [];
+
+        // Count subjects that have marks entered
+        const subjectsWithMarks = subjects.filter(s => s.has_marks).length;
+
+        // Determine Status
+        // 1. Check for failures (Backlogs)
+        const failedCount = subjects.filter(s => s.has_marks && s.status === 'Fail').length;
+
+        let statusText = 'On Going';
+        let statusClass = 'on-going'; // for card border
+        let badgeClass = 'bg-ongoing'; // for badge background
+
+        if (failedCount > 0) {
+          statusText = `${failedCount} Backlogs`;
+          statusClass = 'has-backlog';
+          badgeClass = 'bg-danger';
+        } else if (subjectsWithMarks === subjects.length && subjects.length > 0) {
+          statusText = 'Completed';
+          statusClass = 'completed';
+          badgeClass = 'bg-success';
+        } else {
+          // Default is On Going
+          statusText = 'On Going';
+          statusClass = 'on-going';
+          badgeClass = 'bg-info';
+        }
+
+        return `
+                    <div class="semester-card ${statusClass}" onclick="studentMarks.showSemesterDetails('${sem}')">
+                        <h4>Semester ${sem}</h4>
+                        <div class="text-muted small" style="margin-bottom: 12px;">${subjectsWithMarks} Subjects</div>
+                        <div class="status-badge ${badgeClass} text-white">
+                            ${statusText}
+                        </div>
+                    </div>
+                `;
+      }).join('');
+    },
+
+    populateFilter(semData) {
+      const select = document.getElementById('semesterFilter');
+      const semesters = Object.keys(semData).sort();
+
+      semesters.forEach(sem => {
+        const option = document.createElement('option');
+        option.value = sem;
+        option.textContent = `Semester ${sem}`;
+        select.appendChild(option);
+      });
+    },
+
+    filterSemesterCards() {
+      const val = document.getElementById('semesterFilter').value;
+      this.renderSemesters(this.marksData.semester_data, val);
+    },
+
+    showSemesterDetails(sem) {
+      // This needs to link to a valid route. 
+      // Assuming student.semester_marks_view exists or we'll need to create/verify it.
+      // Based on previous code it pointed to student.semester_marks_view
+      window.location.href = `{{ url_for('student.semester_marks_view') }}?semester=${sem}`;
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    studentMarks.init();
+  });
+</script>
+
+
+
+</div>
+{% endblock %}

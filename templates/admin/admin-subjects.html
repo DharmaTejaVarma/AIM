@@ -1,0 +1,522 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Subjects - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'subjects' %}
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Subjects</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div id="subjectsAlert" class="alert" style="display: block;">
+        {% for category, message in messages %}
+        <div class="alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h1>Subjects Management</h1>
+        <p class="page-subtitle">Manage academic subjects, their codes, credits, and types</p>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <button class="btn btn-primary" onclick="showSubjectModal()">
+            <span class="action-icon">➕</span> Add New Subject
+          </button>
+          <button class="btn btn-outline-secondary"
+            onclick="document.getElementById('importModal').style.display='block'">
+            <span class="action-icon">📥</span> Import CSV
+          </button>
+          <button class="btn btn-outline-secondary" onclick="exportSubjects()">
+            <span class="action-icon">📤</span> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        {% set max_years = 4 %}
+        {% set max_sems = 8 %}
+        {% if academic_setup and academic_setup.courses %}
+        {% set max_years = academic_setup.courses|map(attribute='duration_years')|max %}
+        {% set max_sems = academic_setup.courses|map(attribute='total_semesters')|max %}
+        {% endif %}
+
+        <form action="{{ url_for('admin.subjects') }}" method="GET" class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Branch</label>
+            <select name="branch" class="form-select" onchange="this.form.submit()">
+              <option value="">All Branches</option>
+              {% for dept in departments %}
+              <option value="{{ dept.name }}" {% if branch==dept.name %}selected{% endif %}>{{
+                dept.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Year</label>
+            <select name="year" class="form-select" onchange="this.form.submit()">
+              <option value="">All Years</option>
+              {% for y in range(1, max_years + 1) %}
+              <option value="{{ y }}" {% if year==y %}selected{% endif %}>Year {{ y }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Semester</label>
+            <select name="semester" class="form-select" onchange="this.form.submit()">
+              <option value="">All Semesters</option>
+              {% for s in range(1, max_sems + 1) %}
+              <option value="{{ s }}" {% if semester==s %}selected{% endif %}>Semester {{ s
+                }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Subject Type</label>
+            <select name="type" class="form-select" onchange="this.form.submit()">
+              <option value="">All Types</option>
+              {% for t in ['theory', 'lab', 'skill_course'] %}
+              <option value="{{ t }}" {% if type==t %}selected{% endif %}>{{ t|replace('_', '
+                ')|title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+        </form>
+      </div>
+
+      <div class="dashboard-card full-width" style="margin-top: 2rem;">
+        <h3>All Subjects <span class="badge badge-info">{{ subjects|length }} subjects</span></h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Branch</th>
+                <th>Year/Sem</th>
+                <th>Type</th>
+                <th>Credits</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for subject in subjects %}
+              <tr>
+                <td>{{ subject.code }}</td>
+                <td>{{ subject.name }}</td>
+                <td>{{ subject.branch }}</td>
+                <td>
+                  <span class="badge badge-info" style="font-size: 0.85em;">Year {{ subject.year }}</span>
+                  <span class="badge badge-warning" style="font-size: 0.85em;">Semester {{ subject.semester }}</span>
+                </td>
+                <td><span class="badge badge-{{ 'primary' if subject.type == 'theory' else 'secondary' }}">{{
+                    subject.type|replace('_', ' ')|title }}</span></td>
+                <td>{{ subject.credits }}</td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon" title="Edit" data-subject='{{ subject|tojson }}'
+                      onclick='editSubject(JSON.parse(this.dataset.subject))'>✏️</button>
+                    <form action="{{ url_for('admin.delete_subject', id=subject.id) }}" method="POST"
+                      style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete this subject?');">
+                      <button type="submit" class="btn-icon delete-btn" title="Delete">🗑️</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Add Subject Modal -->
+<div id="subjectModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideSubjectModal()">×</span>
+    <h2 id="modalTitle">Add Subject</h2>
+    <form id="subjectForm" action="{{ url_for('admin.add_subject') }}" method="POST">
+      <div class="form-group">
+        <label for="name">Subject Name</label>
+        <input type="text" id="name" name="name" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="code">Subject Code</label>
+        <input type="text" id="code" name="code" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="branch">Branch</label>
+        <select id="branch" name="branch" class="form-select" required>
+          <option value="">Select Branch</option>
+          {% for dept in departments %}
+          <option value="{{ dept.name }}">{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="year">Year</label>
+        <select id="year" name="year" class="form-select" required onchange="updateSemesters()">
+          <option value="">Select Year</option>
+          {% for y in range(1, max_years + 1) %}
+          <option value="{{ y }}">Year {{ y }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="semester">Semester</label>
+        <select id="semester" name="semester" class="form-select" required disabled>
+          <option value="">Select Semester</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="type">Type</label>
+        <select id="type" name="type" class="form-select" required>
+          <option value="">Select Type</option>
+          <option value="theory">Theory</option>
+          <option value="lab">Lab</option>
+          <option value="skill_course">Skill Course</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="credits">Credits</label>
+        <input type="number" id="credits" name="credits" class="form-input" min="0" max="6" required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideSubjectModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Subject</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function showSubjectModal() {
+    document.getElementById('subjectModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Add Subject';
+    document.getElementById('subjectForm').action = "{{ url_for('admin.add_subject') }}";
+    document.getElementById('subjectForm').reset();
+    document.getElementById('semester').disabled = true; // Disable semester on reset
+    document.getElementById('semester').innerHTML = '<option value="">Select Semester</option>'; // Clear semester options
+  }
+
+  function hideSubjectModal() {
+    document.getElementById('subjectModal').style.display = 'none';
+  }
+
+  function editSubject(subject) {
+    document.getElementById('subjectModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Edit Subject';
+    document.getElementById('subjectForm').action = `/admin/subjects/edit/${subject.id}`;
+
+    document.getElementById('name').value = subject.name;
+    document.getElementById('code').value = subject.code;
+    document.getElementById('credits').value = subject.credits;
+    document.getElementById('branch').value = subject.branch;
+    document.getElementById('year').value = subject.year;
+
+    // Update semesters based on the subject's year
+    updateSemesters();
+    document.getElementById('semester').value = subject.semester;
+
+    document.getElementById('type').value = subject.type;
+  }
+
+  function updateSemesters() {
+    const year = document.getElementById('year').value;
+    const semesterSelect = document.getElementById('semester');
+    semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+    semesterSelect.disabled = true;
+
+    if (year) {
+      semesterSelect.disabled = false;
+      const startSem = (year - 1) * 2 + 1;
+      const endSem = startSem + 1;
+
+      const option1 = document.createElement('option');
+      option1.value = startSem;
+      option1.text = `Semester ${startSem}`;
+      semesterSelect.add(option1);
+
+      const option2 = document.createElement('option');
+      option2.value = endSem;
+      option2.text = `Semester ${endSem}`;
+      semesterSelect.add(option2);
+    }
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function (event) {
+    if (event.target == document.getElementById('subjectModal')) {
+      hideSubjectModal();
+    }
+    if (event.target == document.getElementById('importModal')) {
+      document.getElementById('importModal').style.display = 'none';
+    }
+  }
+
+  // Import/Export Functions
+  let importData = [];
+
+  function exportSubjects() {
+    window.location.href = "{{ url_for('admin.export_subjects') }}";
+  }
+
+
+  function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const text = e.target.result;
+      parseCSV(text);
+    };
+    reader.readAsText(file);
+  }
+
+  function parseCSV(text) {
+    const lines = text.trim().split('\n');
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+
+    importData = [];
+    for (let i = 1; i < lines.length; i++) {
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+
+      for (let char of lines[i]) {
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current.trim().replace(/^"|"$/g, ''));
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      values.push(current.trim().replace(/^"|"$/g, ''));
+
+      if (values.length === headers.length) {
+        const subject = {};
+        headers.forEach((header, index) => {
+          subject[header] = values[index];
+        });
+        importData.push(subject);
+      }
+    }
+
+    displayPreview();
+  }
+
+  function displayPreview() {
+    const previewHeader = document.getElementById('csvPreviewHeader');
+    const previewBody = document.getElementById('csvPreviewBody');
+
+    if (importData.length === 0) return;
+
+    const headers = Object.keys(importData[0]);
+    previewHeader.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+
+    const previewRows = importData.slice(0, 5);
+    previewBody.innerHTML = previewRows.map(subject => `
+        <tr>${headers.map(h => `<td>${subject[h]}</td>`).join('')}</tr>
+      `).join('');
+
+    document.getElementById('csvPreview').style.display = 'block';
+  }
+
+  function importSubjects() {
+    if (importData.length === 0) return;
+
+    const importModal = document.getElementById('importModal');
+    const actionsDiv = importModal.querySelector('.modal-actions');
+    const progressBarContainer = document.getElementById('importProgressBarContainer');
+    const progressBar = document.getElementById('importProgressBar');
+    const progressText = document.getElementById('importProgressText');
+
+    const stats = document.getElementById('importStats');
+    const results = document.getElementById('importResults');
+    const alertDiv = document.getElementById('importAlert');
+
+    // Setup UI for Progress
+    actionsDiv.style.display = 'none';
+    progressBarContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.innerText = '0%';
+    progressText.innerText = `Preparing to import ${importData.length} records...`;
+
+    // Reset previous results
+    results.style.display = 'none';
+    stats.innerHTML = '';
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      if (progress < 90) {
+        progress += Math.floor(Math.random() * 10) + 5;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = `${progress}%`;
+        progressBar.innerText = `${progress}%`;
+        progressText.innerText = `Importing data...`;
+      }
+    }, 200);
+
+    fetch("{{ url_for('admin.import_subjects') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(importData)
+    })
+      .then(response => response.json())
+      .then(data => {
+        clearInterval(interval);
+        progressBar.style.width = '100%';
+        progressBar.innerText = '100%';
+        progressText.innerText = 'Import Complete!';
+
+        setTimeout(() => {
+          // Restore UI
+          actionsDiv.style.display = 'flex'; // Restore buttons
+          progressBarContainer.style.display = 'none'; // Hide bar
+
+          results.style.display = 'block';
+
+          if (data.error) {
+            alertDiv.className = 'alert alert-danger';
+            alertDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
+            stats.innerHTML = '';
+          } else {
+            let html = `<div>Successfully imported: ${data.success_count} subjects</div>`;
+            if (data.created_count !== undefined && data.updated_count !== undefined) {
+              html += `<div class="text-muted" style="font-size: 0.9em;">(Created: ${data.created_count}, Updated: ${data.updated_count})</div>`;
+            }
+
+            if (data.warnings && data.warnings.length > 0) {
+              let warningHtml = `<div class="alert alert-warning" style="margin-top: 10px;">
+                        <strong>Import completed with warnings:</strong>
+                        <ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul>
+                    </div>`;
+              html += warningHtml;
+            }
+
+            if (data.errors && data.errors.length > 0) {
+              alertDiv.className = 'alert alert-warning';
+              alertDiv.innerHTML = `<strong>Import completed with errors!</strong>`;
+              html += `<div style="color: red; margin-top: 10px;">Errors: ${data.errors.length}</div>`;
+              html += `<ul>${data.errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+            } else {
+              alertDiv.className = 'alert alert-success';
+              alertDiv.innerHTML = `<strong>${data.message}</strong>`;
+            }
+            stats.innerHTML = html;
+
+            if (data.success_count > 0) {
+              setTimeout(() => window.location.reload(), 3000);
+            }
+          }
+        }, 500);
+      })
+      .catch(error => {
+        clearInterval(interval);
+        console.error('Error:', error);
+        alert('An error occurred during import.');
+        actionsDiv.style.display = 'flex';
+        progressBarContainer.style.display = 'none';
+      });
+  }
+
+  function downloadTemplate() {
+    const template = `code,name,branch,year,semester,credits,type
+CS301,Data Structures,Computer Science & Engineering,3,5,4,theory`;
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'subjects_template.csv';
+    a.click();
+  }
+</script>
+
+<!-- Import Modal -->
+<div id="importModal" class="modal">
+  <div class="modal-content" style="max-width: 800px;">
+    <div class="modal-header">
+      <h2>Import Subjects from CSV</h2>
+      <span class="close" onclick="document.getElementById('importModal').style.display='none'">&times;</span>
+    </div>
+    <div class="modal-body">
+      <div class="alert alert-info">
+        <strong>Note:</strong> CSV must contain 'code', 'name', 'branch', 'year', 'semester', 'credits', 'type'
+        columns.
+        <button onclick="downloadTemplate()" class="btn btn-sm btn-secondary" style="margin-left: 10px;">Download
+          Template</button>
+      </div>
+
+      <div class="form-group">
+        <label>Upload CSV File</label>
+        <input type="file" accept=".csv" onchange="handleFileUpload(event)" class="form-control">
+      </div>
+
+      <div id="csvPreview" style="margin-top: 20px; display: none;">
+        <h4>CSV Preview (First 5 rows)</h4>
+        <div style="max-height: 300px; overflow-y: auto;">
+          <table class="table">
+            <thead id="csvPreviewHeader"></thead>
+            <tbody id="csvPreviewBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div id="importResults" style="display: none; margin-top: 20px;">
+        <div id="importAlert" class="alert"></div>
+        <div id="importStats"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <div id="importProgressBarContainer" style="display: none; width: 100%; margin-bottom: 10px;">
+        <div class="progress" style="height: 20px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;">
+          <div id="importProgressBar" class="progress-bar" role="progressbar"
+            style="width: 0%; height: 100%; background-color: #0d6efd; color: white; text-align: center; line-height: 20px; transition: width 0.3s ease;">
+            0%</div>
+        </div>
+        <div id="importProgressText" class="text-center mt-2" style="font-size: 0.9em; color: #6c757d;">Preparing...
+        </div>
+      </div>
+      <div class="modal-actions" style="display: flex; justify-content: flex-end; width: 100%; gap: 10px;">
+        <button onclick="document.getElementById('importModal').style.display='none'"
+          class="btn btn-secondary">Cancel</button>
+        <button id="importBtn" onclick="importSubjects()" class="btn btn-primary">Import Data</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+</div>
+{% endblock %}

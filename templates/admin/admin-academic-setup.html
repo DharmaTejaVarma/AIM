@@ -1,0 +1,838 @@
+{% extends "base.html" %}
+
+{% block title %}Academic Setup - CampusIQ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease-in-out;
+    }
+
+    .tab-content.active {
+        display: block;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% set active_page = 'academic_setup' %}
+<div id="app" class="app-shell">
+    {% include 'includes/admin_sidebar.html' %}
+
+    <main class="main">
+        <header class="topbar">
+            <div class="header-title">
+                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Academic Setup
+                </h2>
+            </div>
+            <div class="user-area">
+                <button class="notification-btn">🔔</button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div id="alertPlaceholder">
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">
+                    {{ message }}
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+            </div>
+
+            <div class="page-header">
+                <h1>Academic Structure Setup</h1>
+                <p class="page-subtitle">Configure Courses, Branches, Years, and Semesters.</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card stat-card--blue">
+                    <div class="stat-header">
+                        <div class="stat-label">Programs</div>
+                        <div class="stat-icon">🎓</div>
+                    </div>
+                    <div id="stat_total_courses" class="stat-value">--</div>
+                    <div class="stat-subtext">Active courses</div>
+                </div>
+                <div class="stat-card stat-card--green">
+                    <div class="stat-header">
+                        <div class="stat-label">Specializations</div>
+                        <div class="stat-icon">🏢</div>
+                    </div>
+                    <div id="stat_total_branches" class="stat-value">--</div>
+                    <div class="stat-subtext">Department branches</div>
+                </div>
+                <div class="stat-card stat-card--sky">
+                    <div class="stat-header">
+                        <div class="stat-label">Batches</div>
+                        <div class="stat-icon">👥</div>
+                    </div>
+                    <div id="stat_total_batches" class="stat-value">--</div>
+                    <div class="stat-subtext">Registered batches</div>
+                </div>
+            </div>
+
+            <!-- TABS -->
+            <div class="tabs-container" style="margin-bottom: 2rem;">
+                <button class="tab-btn active" onclick="openTab('organization', this)">Organization</button>
+                <button class="tab-btn" onclick="openTab('years', this)">Academic Years</button>
+                <button class="tab-btn" onclick="openTab('semesters', this)">Semesters</button>
+                <button class="tab-btn" onclick="openTab('batches', this)">Batches</button>
+            </div>
+
+            <!-- TAB: ORGANIZATION (COURSES & BRANCHES) -->
+            <div id="organization" class="tab-content active">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Programmes (Courses)</h3>
+                        <div class="action-bar-min">
+                            <button class="btn btn-sm btn-secondary" onclick="seedDefaults()">🔄 Seed
+                                Defaults</button>
+                            <button class="btn btn-sm btn-primary" onclick="showCourseModal()">➕ New Course</button>
+                        </div>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="coursesTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Code</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center">Loading courses...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card" style="margin-top: 1.5rem;">
+                    <div class="card-header">
+                        <h3 class="card-title">Specializations (Branches)</h3>
+                        <button class="btn btn-sm btn-primary" onclick="showBranchModal()">➕ New Branch</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="branchesTable">
+                            <thead>
+                                <tr>
+                                    <th>Branch Name</th>
+                                    <th>Code</th>
+                                    <th>Course</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center">Loading branches...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: ACADEMIC YEARS -->
+            <div id="years" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Academic Years</h3>
+                        <button class="btn btn-sm btn-primary" onclick="showYearModal()">➕ New Academic
+                            Year</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="yearsTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Current?</th>
+                                    <th>Active?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center">Loading years...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: SEMESTERS -->
+            <div id="semesters" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Semesters</h3>
+                        <button class="btn btn-sm btn-primary" onclick="showSemesterModal()">➕ New Semester</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="semestersTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Academic Year</th>
+                                    <th>Duration</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="4" class="text-center">Loading semesters...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB: BATCHES -->
+            <div id="batches" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Batches</h3>
+                        <button class="btn btn-sm btn-primary" onclick="showBatchModal()">➕ New Batch</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="batchesTable">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Start Year</th>
+                                    <th>End Year</th>
+                                    <th>Status</th>
+                                    <th class="text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="5" class="text-center">Loading batches...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<!-- MODAL: COURSE -->
+<div id="courseModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeModals()">×</span>
+        <h2 id="courseModalTitle">New Course (Programme)</h2>
+        <form onsubmit="handleCourseSubmit(event)">
+            <input type="hidden" name="id" id="courseId">
+            <div class="form-group">
+                <label>Name (e.g. B.Tech)</label>
+                <input type="text" name="name" id="courseName" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>Code (e.g. BTECH)</label>
+                <input type="text" name="code" id="courseCode" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>Duration (Years)</label>
+                <input type="number" name="duration_years" id="courseDuration" class="form-input" value="4" required>
+            </div>
+            <!-- Status hidden if new, maybe shown if update? For now simplify -->
+            <button type="submit" class="btn btn-primary" id="courseSubmitBtn">Create</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: BRANCH -->
+<div id="branchModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeModals()">×</span>
+        <h2 id="branchModalTitle">New Branch</h2>
+        <form onsubmit="handleBranchSubmit(event)">
+            <input type="hidden" name="id" id="branchId">
+            <div class="form-group">
+                <label>Course</label>
+                <select id="branchCourseSelect" name="course_id" class="form-select" required></select>
+            </div>
+            <div class="form-group">
+                <label>Name (e.g. Computer Science)</label>
+                <input type="text" name="name" id="branchName" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>Code (e.g. CSE)</label>
+                <input type="text" name="code" id="branchCode" class="form-input" required>
+            </div>
+            <button type="submit" class="btn btn-primary" id="branchSubmitBtn">Create</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: YEAR -->
+<div id="yearModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeModals()">×</span>
+        <h2>New Academic Year</h2>
+        <form id="yearForm" onsubmit="createYear(event)">
+            <div class="form-group">
+                <label>Name (e.g. 2025-2026)</label>
+                <input type="text" name="name" class="form-input" required placeholder="YYYY-YYYY">
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex:1">
+                    <label>Start Date</label>
+                    <input type="date" name="start_date" class="form-input" required>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label>End Date</label>
+                    <input type="date" name="end_date" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label><input type="checkbox" name="is_current"> Set as Current Academic Year</label>
+            </div>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: SEMESTER -->
+<div id="semesterModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeModals()">×</span>
+        <h2>New Semester</h2>
+        <form id="semesterForm" onsubmit="createSemester(event)">
+            <div class="form-group">
+                <label>Academic Year</label>
+                <select id="semYearSelect" name="academic_year_id" class="form-select" required></select>
+            </div>
+            <div class="form-group">
+                <label>Name (e.g. Semester 1)</label>
+                <input type="text" name="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+                <label>Sequence (1, 2, 3...)</label>
+                <input type="number" name="sequence_number" class="form-input" required>
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex:1">
+                    <label>Start Date</label>
+                    <input type="date" name="start_date" class="form-input" required>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label>End Date</label>
+                    <input type="date" name="end_date" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <select name="status" class="form-select">
+                    <option value="Upcoming">Upcoming</option>
+                    <option value="Active">Active</option>
+                    <option value="Closed">Closed</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </form>
+    </div>
+</div>
+
+<!-- MODAL: BATCH -->
+<div id="batchModal" class="modal">
+    <div class="modal-content">
+        <span class="close-button" onclick="closeModals()">×</span>
+        <h2 id="batchModalTitle">New Batch</h2>
+        <form onsubmit="handleBatchSubmit(event)">
+            <input type="hidden" name="id" id="batchId">
+            <div class="form-group">
+                <label>Name (e.g. 2024-2028)</label>
+                <input type="text" name="name" id="batchName" class="form-input" required placeholder="YYYY-YYYY">
+            </div>
+            <div style="display: flex; gap: 15px;">
+                <div class="form-group" style="flex:1">
+                    <label>Start Year</label>
+                    <input type="number" name="start_year" id="batchStart" class="form-input" required>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label>End Year</label>
+                    <input type="number" name="end_year" id="batchEnd" class="form-input" required>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Status</label>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <input type="checkbox" name="is_active" id="batchActive" checked>
+                    <span>Active</span>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary" id="batchSubmitBtn">Create</button>
+        </form>
+    </div>
+    </section>
+    </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // SPI Logic
+    let yearsCache = [];
+    let coursesCache = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadYears();
+        loadSemesters();
+        loadCourses();
+        loadBranches();
+        loadBatches();
+    });
+
+    function openTab(tabId, btn) {
+        // Toggle active class for content
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+
+        // Toggle active class for buttons
+        document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+        if (btn) {
+            btn.classList.add('active');
+        }
+    }
+
+    function closeModals() {
+        document.querySelectorAll('.modal').forEach(el => el.style.display = 'none');
+    }
+
+    // --- API CALLS ---
+    async function loadYears() {
+        const tbody = document.querySelector('#yearsTable tbody');
+        try {
+            const res = await fetch('/api/academic/years');
+            const data = await res.json();
+            yearsCache = data;
+
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No years found</td></tr>';
+                return;
+            }
+
+            data.forEach(y => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td>${y.name}</td>
+                        <td>${y.start_date}</td>
+                        <td>${y.end_date}</td>
+                        <td>${y.is_current ? '✅' : '-'}</td>
+                        <td><span class="badge badge-${y.is_active ? 'success' : 'secondary'}">${y.is_active ? 'Active' : 'Inactive'}</span></td>
+                    `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="5" style="color:red">Error loading years: ${e}</td></tr>`;
+        }
+    }
+
+    async function loadSemesters() {
+        const tbody = document.querySelector('#semestersTable tbody');
+        try {
+            const res = await fetch('/api/academic/semesters');
+            const data = await res.json();
+
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center">No semesters found</td></tr>';
+                return;
+            }
+
+            data.forEach(s => {
+                const yr = yearsCache.find(y => y.id === s.academic_year_id);
+                const yrName = yr ? yr.name : 'Unknown Year';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td>${s.name}</td>
+                        <td>${yrName}</td>
+                        <td>${s.start_date} to ${s.end_date}</td>
+                        <td><span class="badge badge-info">${s.status}</span></td>
+                    `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="4" style="color:red">Error loading semesters: ${e}</td></tr>`;
+        }
+    }
+
+    async function loadCourses() {
+        const tbody = document.querySelector('#coursesTable tbody');
+        try {
+            const res = await fetch('/api/academic/courses');
+            const data = await res.json();
+            coursesCache = data;
+
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No courses found</td></tr>';
+                return;
+            }
+            data.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td>${c.name}</td>
+                        <td>${c.code}</td>
+                        <td>${c.duration_years} Years</td>
+                        <td>${c.status}</td>
+                        <td>
+                             <button class="btn-icon" onclick='editCourse(${JSON.stringify(c)})' title="Edit">✏️</button>
+                             <button class="btn-icon" onclick="deleteCourse('${c.id}')" title="Delete" style="color:var(--danger)">🗑️</button>
+                        </td>
+                    `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function loadBranches() {
+        const tbody = document.querySelector('#branchesTable tbody');
+        try {
+            const res = await fetch('/api/academic/branches');
+            const data = await res.json();
+
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No branches found</td></tr>';
+                return;
+            }
+            data.forEach(b => {
+                // Find course name
+                const c = coursesCache.find(x => x.id === b.course_id);
+                const cName = c ? c.name : 'Unknown';
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td>${b.name}</td>
+                        <td>${b.code}</td>
+                        <td>${cName}</td>
+                        <td>${b.status}</td>
+                         <td>
+                             <button class="btn-icon" onclick='editBranch(${JSON.stringify(b)})' title="Edit">✏️</button>
+                             <button class="btn-icon" onclick="deleteBranch('${b.id}')" title="Delete" style="color:var(--danger)">🗑️</button>
+                        </td>
+                    `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error(e);
+        }
+    }
+
+    async function loadBatches() {
+        const tbody = document.querySelector('#batchesTable tbody');
+        try {
+            const res = await fetch('/api/academic/batches');
+            const data = await res.json();
+
+            tbody.innerHTML = '';
+            if (!data || data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No batches found</td></tr>';
+                return;
+            }
+
+            data.forEach(b => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                        <td>${b.name}</td>
+                        <td>${b.start_year}</td>
+                        <td>${b.end_year}</td>
+                        <td><span class="badge badge-${b.is_active ? 'success' : 'secondary'}">${b.is_active ? 'Active' : 'Inactive'}</span></td>
+                        <td>
+                            <button class="btn-icon" onclick='editBatch(${JSON.stringify(b)})' title="Edit">✏️</button>
+                            <button class="btn-icon" onclick="deleteBatch('${b.id}')" title="Delete" style="color:var(--danger)">🗑️</button>
+                        </td>
+                    `;
+                tbody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error(e);
+            tbody.innerHTML = `<tr><td colspan="5" style="color:red">Error loading batches</td></tr>`;
+        }
+    }
+
+    // --- CREATION & EDITING ---
+    function showYearModal() { document.getElementById('yearModal').style.display = 'flex'; }
+    function showCourseModal() {
+        document.getElementById('courseModalTitle').innerText = 'New Course (Programme)';
+        document.getElementById('courseSubmitBtn').innerText = 'Create';
+        document.getElementById('courseId').value = '';
+        document.getElementById('courseName').value = '';
+        document.getElementById('courseCode').value = '';
+        document.getElementById('courseDuration').value = '4';
+        document.getElementById('courseModal').style.display = 'flex';
+    }
+
+    function editCourse(course) {
+        document.getElementById('courseModalTitle').innerText = 'Edit Course';
+        document.getElementById('courseSubmitBtn').innerText = 'Update';
+        document.getElementById('courseId').value = course.id;
+        document.getElementById('courseName').value = course.name;
+        document.getElementById('courseCode').value = course.code;
+        document.getElementById('courseDuration').value = course.duration_years;
+        document.getElementById('courseModal').style.display = 'flex';
+    }
+
+    function showBranchModal() {
+        document.getElementById('branchModalTitle').innerText = 'New Branch';
+        document.getElementById('branchSubmitBtn').innerText = 'Create';
+        document.getElementById('branchId').value = '';
+        document.getElementById('branchName').value = '';
+        document.getElementById('branchCode').value = '';
+
+        const sel = document.getElementById('branchCourseSelect');
+        sel.innerHTML = '';
+        coursesCache.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.text = c.name;
+            sel.appendChild(opt);
+        });
+        document.getElementById('branchModal').style.display = 'flex';
+    }
+
+    function editBranch(branch) {
+        document.getElementById('branchModalTitle').innerText = 'Edit Branch';
+        document.getElementById('branchSubmitBtn').innerText = 'Update';
+        document.getElementById('branchId').value = branch.id;
+        document.getElementById('branchName').value = branch.name;
+        document.getElementById('branchCode').value = branch.code;
+
+        const sel = document.getElementById('branchCourseSelect');
+        sel.innerHTML = '';
+        coursesCache.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.id;
+            opt.text = c.name;
+            sel.appendChild(opt);
+        });
+        sel.value = branch.course_id;
+
+        document.getElementById('branchModal').style.display = 'flex';
+    }
+
+    async function createYear(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const json = Object.fromEntries(formData.entries());
+        json.is_current = (json.is_current === 'on');
+        json.is_active = true;
+
+        const res = await fetch('/api/academic/years', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(json)
+        });
+
+        if (res.ok) { closeModals(); e.target.reset(); loadYears(); }
+        else { alert('Error creating year'); }
+    }
+
+    function showSemesterModal() {
+        const sel = document.getElementById('semYearSelect');
+        sel.innerHTML = '';
+        yearsCache.forEach(y => {
+            const opt = document.createElement('option');
+            opt.value = y.id;
+            opt.text = y.name;
+            sel.appendChild(opt);
+        });
+        document.getElementById('semesterModal').style.display = 'flex';
+    }
+
+    async function createSemester(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const json = Object.fromEntries(formData.entries());
+        json.academic_year_id = json.academic_year_id;
+        json.sequence_number = parseInt(json.sequence_number);
+
+        const res = await fetch('/api/academic/semesters', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(json)
+        });
+
+        if (res.ok) { closeModals(); e.target.reset(); loadSemesters(); }
+        else {
+            const err = await res.json();
+            alert('Error: ' + err.detail);
+        }
+    }
+
+    async function handleCourseSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const json = Object.fromEntries(formData.entries());
+        const id = json.id;
+
+        let url = '/api/academic/courses';
+        let method = 'POST';
+
+        if (id) {
+            url = `/api/academic/courses/${id}`;
+            method = 'PUT';
+        }
+
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(json)
+        });
+
+        if (res.ok) { closeModals(); e.target.reset(); loadCourses(); }
+        else {
+            const err = await res.json();
+            alert('Error: ' + (err.detail || 'Failed'));
+        }
+    }
+
+    async function deleteCourse(id) {
+        if (!confirm('Are you sure you want to delete this course? This action cannot be undone.')) return;
+        const res = await fetch(`/api/academic/courses/${id}`, { method: 'DELETE' });
+        if (res.ok) { loadCourses(); }
+        else { const err = await res.json(); alert('Error: ' + err.detail); }
+    }
+
+    async function handleBranchSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const json = Object.fromEntries(formData.entries());
+        const id = json.id;
+
+        let url = '/api/academic/branches';
+        let method = 'POST';
+
+        if (id) {
+            url = `/api/academic/branches/${id}`;
+            method = 'PUT';
+        }
+
+        const res = await fetch(url, {
+            method: method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(json)
+        });
+        if (res.ok) { closeModals(); e.target.reset(); loadBranches(); }
+        else alert('Error');
+    }
+
+    async function deleteBranch(id) {
+        if (!confirm('Are you sure you want to delete this branch?')) return;
+        const res = await fetch(`/api/academic/branches/${id}`, { method: 'DELETE' });
+        if (res.ok) { loadBranches(); }
+        else { const err = await res.json(); alert('Error: ' + err.detail); }
+    }
+
+    // --- BATCH Logic ---
+    function showBatchModal() {
+        document.getElementById('batchModalTitle').innerText = 'New Batch';
+        document.getElementById('batchSubmitBtn').innerText = 'Create';
+        document.getElementById('batchId').value = '';
+        document.getElementById('batchName').value = '';
+        document.getElementById('batchStart').value = '';
+        document.getElementById('batchEnd').value = '';
+        document.getElementById('batchActive').checked = true;
+        document.getElementById('batchModal').style.display = 'flex';
+    }
+
+    function editBatch(b) {
+        document.getElementById('batchModalTitle').innerText = 'Edit Batch';
+        document.getElementById('batchSubmitBtn').innerText = 'Update';
+        document.getElementById('batchId').value = b.id;
+        document.getElementById('batchName').value = b.name;
+        document.getElementById('batchStart').value = b.start_year;
+        document.getElementById('batchEnd').value = b.end_year;
+        document.getElementById('batchActive').checked = b.is_active;
+        document.getElementById('batchModal').style.display = 'flex';
+    }
+
+    async function handleBatchSubmit(e) {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const json = Object.fromEntries(formData.entries());
+        json.start_year = parseInt(json.start_year);
+        json.end_year = parseInt(json.end_year);
+        json.is_active = document.getElementById('batchActive').checked;
+
+        const id = json.id;
+        let url = '/api/academic/batches';
+        let method = 'POST';
+        if (id) {
+            url = `/api/academic/batches/${id}`;
+            method = 'PUT';
+        }
+
+        const res = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(json)
+        });
+
+        if (res.ok) { closeModals(); e.target.reset(); loadBatches(); }
+        else {
+            const err = await res.json();
+            alert('Error: ' + (err.detail || 'Failed'));
+        }
+    }
+
+    async function deleteBatch(id) {
+        if (!confirm('Delete this batch?')) return;
+        const res = await fetch(`/api/academic/batches/${id}`, { method: 'DELETE' });
+        if (res.ok) loadBatches();
+        else alert('Error deleting batch');
+    }
+
+    async function seedDefaults() {
+        if (!confirm('This will restore the default B.Tech Course and Branches (CSE, ECE, ME, CE, AI&DS, IT). Existing data will be preserved if possible. Continue?')) return;
+
+        try {
+            const res = await fetch('/api/academic/seed-defaults', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message);
+                loadCourses();
+                loadBranches();
+            } else {
+                alert('Error: ' + data.detail);
+            }
+        } catch (e) {
+            alert('Connection error');
+        }
+    }
+
+    window.onclick = function (e) {
+        if (e.target.classList.contains('modal')) closeModals();
+    }
+</script>
+{% endblock %}

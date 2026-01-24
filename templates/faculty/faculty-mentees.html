@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}My Mentees | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+    <!-- Sidebar -->
+    {% set active_page = 'mentees' %}
+    {% include 'includes/faculty_sidebar.html' %}
+
+    <!-- Main Content -->
+    <main class="main">
+        <header class="topbar">
+            <div class="header-title">
+                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">My Mentees</h2>
+            </div>
+            <div class="user-area">
+                <button class="notification-btn" aria-label="Notifications">🔔
+                    {% if new_updates_count > 0 %}
+                    <span
+                        style="background: red; border-radius: 50%; width: 8px; height: 8px; position: absolute; top: 10px; right: 10px;"></span>
+                    {% endif %}
+                </button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div class="page-header">
+                <h1>My Mentees</h1>
+                <p class="page-subtitle">Managed students for academic guidance</p>
+            </div>
+
+            <div class="card full-width">
+                <div class="card-header-with-action">
+                    <div class="stat-badge">
+                        <span class="badge badge-primary" style="font-size: 0.9rem;">{{ mentees|length }} Assigned
+                            Students</span>
+                    </div>
+                    <div class="text-muted" style="font-size: 0.85rem;">
+                        ℹ️ Synced via Class Teacher designation
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table" id="menteesTable">
+                        <thead>
+                            <tr>
+                                <th>Student ID</th>
+                                <th>Name</th>
+                                <th>Branch</th>
+                                <th>Academic Year</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for mentee in mentees %}
+                            <tr>
+                                <td><strong>{{ mentee.student_id }}</strong></td>
+                                <td>{{ mentee.name }}</td>
+                                <td>{{ mentee.branch }}</td>
+                                <td>Year {{ mentee.year }} - Sem {{ mentee.semester }} ({{ mentee.section }})</td>
+                                <td>
+                                    <a href="{{ url_for('faculty.view_student_profile', student_id=mentee.id) }}"
+                                        class="btn btn-sm btn-secondary">
+                                        🔍 View Profile
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center">No mentees assigned. Please contact Administrator.
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" onclick="toggleNotificationModal()">×</span>
+            <h2>Notifications History</h2>
+            <div class="notification-list" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+                {% if announcements %}
+                {% for ann in announcements %}
+                <div class="announcement-item" style="padding: 15px 0; border-bottom: 1px solid var(--border-color);">
+                    <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px; color: var(--text-primary);">{{
+                        ann.title }}</div>
+                    <p class="text-muted" style="margin: 0 0 4px; font-size: 0.9rem;">{{ ann.content }}</p>
+                    <div class="text-muted small" style="font-size: 0.8rem;">{{ ann.date }} • <span
+                            class="badge badge-info">{{
+                            ann.priority|capitalize }}</span></div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p class="text-muted text-center">No notifications found.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleNotificationModal() {
+            const modal = document.getElementById('notificationModal');
+            if (modal.style.display === 'block') {
+                modal.style.display = 'none';
+            } else {
+                modal.style.display = 'block';
+            }
+        }
+
+        // Bind bell click
+        const notificationBtn = document.querySelector('.notification-btn');
+        if (notificationBtn) {
+            notificationBtn.onclick = toggleNotificationModal;
+        }
+
+        // Close on outside click
+        window.onclick = function (event) {
+            const modal = document.getElementById('notificationModal');
+            if (modal && event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
+</div>
+
+<script>
+    function filterMentees() {
+        const input = document.getElementById('mentee-search');
+        const filter = input.value.toLowerCase();
+        const table = document.getElementById('menteesTable');
+        const tr = table.getElementsByTagName('tr');
+
+        for (let i = 1; i < tr.length; i++) {
+            const nameCol = tr[i].getElementsByTagName('td')[1];
+            const idCol = tr[i].getElementsByTagName('td')[0];
+            if (nameCol || idCol) {
+                const nameText = nameCol.textContent || nameCol.innerText;
+                const idText = idCol.textContent || idCol.innerText;
+                if (nameText.toLowerCase().indexOf(filter) > -1 || idText.toLowerCase().indexOf(filter) > -1) {
+                    tr[i].style.display = "";
+                } else {
+                    tr[i].style.display = "none";
+                }
+            }
+        }
+    }
+</script>
+{% endblock %}

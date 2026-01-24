@@ -1,0 +1,640 @@
+{% extends "base.html" %}
+
+{% block title %}Faculty Dashboard - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% include 'includes/faculty_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <!-- Replaced Search with Welcome Context -->
+      <h2 style="font-size: 1.25rem; margin: 0; color: var(--text-primary);">Dashboard</h2>
+      <div class="user-area">
+        <span class="text-muted" style="font-size: 0.9em; margin-right: 15px;">{{ today }}</span>
+        <button class="notification-btn" aria-label="Notifications" onclick="toggleAnnouncements()">🔔
+          {% if pending_period_alerts_count and pending_period_alerts_count > 0 %}
+          <span class="notification-badge"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+
+      <!-- Page Title -->
+      <div class="page-header">
+        <h1>Welcome back, {{ user.name }}</h1>
+        <p class="page-subtitle">Here is what is happening with your classes today.</p>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid">
+        <!-- Total Students -->
+        <div class="stat-card stat-card--blue">
+          <div class="stat-header">
+            <div class="stat-label">Total Students</div>
+            <div class="stat-icon">👥</div>
+          </div>
+          <div class="stat-value">{{ total_students }}</div>
+          <div class="stat-subtext">Active in your courses</div>
+        </div>
+
+        <!-- Classes Today -->
+        <div class="stat-card stat-card--green">
+          <div class="stat-header">
+            <div class="stat-label">Classes Today</div>
+            <div class="stat-icon">📚</div>
+          </div>
+          <div class="stat-value">{{ today_classes|length }}</div>
+          <div class="stat-subtext">{{ today_classes|selectattr('status', 'equalto', 'Completed')|list|length }}
+            Completed so far</div>
+        </div>
+
+        <!-- Pending Attendance -->
+        <div class="stat-card stat-card--amber">
+          <div class="stat-header">
+            <div class="stat-label">Pending Reviews</div>
+            <div class="stat-icon">⚠️</div>
+          </div>
+          <div class="stat-value">{{ pending_attendance_count }}</div>
+          <div class="stat-subtext">Unmarked attendance logs</div>
+        </div>
+
+        <!-- Avg Attendance -->
+        <div class="stat-card stat-card--sky">
+          <div class="stat-header">
+            <div class="stat-label">Avg. Attendance</div>
+            <div class="stat-icon">📈</div>
+          </div>
+          <div class="stat-value">{{ avg_attendance }}%</div>
+          <div class="stat-subtext">Overall student engagement</div>
+        </div>
+      </div>
+
+      <!-- Main Dual Column Layout -->
+      <div class="d-grid-2">
+
+        <!-- Left: Timeline Schedule and Announcements -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📅 Today's Schedule</h3>
+              <a href="{{ url_for('faculty.timetable') }}" class="btn btn-sm btn-outline-secondary">Full Timetable</a>
+            </div>
+
+            <div class="timeline-container">
+              {% if todays_classes %}
+              {% for cls in todays_classes %}
+              <div class="timeline-item">
+                <div class="time-col">
+                  <div class="time-val">{{ cls.start_time }}</div>
+                  <div class="time-sub">{{ cls.end_time }}</div>
+                </div>
+                <div class="marker-col">
+                  <div
+                    class="status-dot {{ 'completed' if cls.status == 'Completed' else 'pending' if cls.status == 'Pending' else 'upcoming' }}">
+                  </div>
+                </div>
+                <div class="content-col" style="width: 100%;">
+                  <div
+                    class="card card-status-accent {{ 'completed' if cls.status == 'Completed' else 'pending' if cls.status == 'Pending' else 'upcoming' }}"
+                    style="padding: 1.25rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05); width: 100%;">
+
+                    <div
+                      style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.25rem;">
+                      <div>
+                        <strong style="font-size: 1.1rem; display: block; color: var(--text-primary);">{{
+                          cls.subject.name
+                          }}</strong>
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">
+                          {{ cls.branch }} (Y{{ cls.year }}) • {{ cls.section }}
+                        </span>
+                      </div>
+                      {% if cls.status == 'Completed' %}
+                      <span class="badge badge-success" style="font-weight: 500; font-size: 0.8rem;">Attendance marked:
+                        Class completed</span>
+                      {% elif cls.status == 'Pending' %}
+                      <span class="badge badge-warning" style="font-weight: 500; font-size: 0.8rem;">Class complete but
+                        attendance not marked</span>
+                      {% elif cls.status == 'Suspended' %}
+                      <span class="badge badge-danger">Suspended</span>
+                      {% endif %}
+                    </div>
+
+                    <!-- Metadata Row: Type, Students, Room -->
+                    <div
+                      style="display: flex; gap: 1.25rem; align-items: center; margin: 0.5rem 0 0.75rem 0; font-size: 0.85rem; color: var(--text-muted);">
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>{{ '🧪' if cls.type == 'Lab' else '📖' }} {{ cls.type }}</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>👥 {{ cls.student_count }} Students</span>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span>📍 {{ cls.room_number }}</span>
+                      </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; justify-content: flex-end; gap: 0.5rem;">
+                      {% if cls.status == 'Pending' %}
+                      <a href="{{ url_for('faculty.attendance') }}?offering_id={{ cls.offering_id }}&date={{ today_date }}&time={{ cls.start_time }}"
+                        class="btn btn-sm btn-primary btn-schedule-action">Mark Attendance</a>
+                      {% else %}
+                      {% if cls.status != 'Completed' and cls.status != 'Suspended' %}
+                      <a href="{{ url_for('faculty.timetable') }}"
+                        class="btn btn-sm btn-outline-warning btn-schedule-action">Alert</a>
+                      <button onclick="openSuspendModal('{{ cls.id }}', '{{ cls.subject.name }}', '{{ today_date }}')"
+                        class="btn btn-sm btn-outline-danger btn-schedule-action">Suspend</button>
+                      {% endif %}
+                      <a href="{{ url_for('faculty.resources') }}?subject_id={{ cls.subject.id }}"
+                        class="btn btn-sm btn-outline-secondary btn-schedule-action">Resources</a>
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              {% endfor %}
+              {% else %}
+              <div style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+                <div style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.3;">📅</div>
+                <p>No classes scheduled for today.</p>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+
+          <!-- Announcements Widget -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">📢 Announcements</h3>
+            </div>
+            {% if announcements %}
+            <div class="update-list"
+              style="display: flex; flex-direction: column; gap: 12px; max-height: 300px; overflow-y: auto;">
+              {% for ann in announcements %}
+              <div class="update-item" style="padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                <div class="update-content">
+                  <h5 style="margin: 0 0 4px 0; font-size: 0.95rem;">{{ ann.title }}</h5>
+                  <p style="margin: 0 0 4px 0; font-size: 0.85rem; color: var(--text-secondary);">{{ ann.content }}</p>
+                  <span class="update-time" style="font-size: 0.75rem; color: var(--text-muted);">{{ ann.created_at[:10]
+                    }}</span>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted">No new announcements.</p>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Right: Widgets -->
+        <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+
+
+          <!-- Period Alerts (Faculty-only) -->
+          <div class="card" id="periodAlertsCard">
+            <div class="card-header">
+              <h3 class="card-title">🔔 Period Alerts</h3>
+            </div>
+            <div id="periodAlertsBody" style="padding: 1rem;">
+              <div class="text-muted">Loading alerts…</div>
+            </div>
+            <div style="border-top: 1px solid var(--border-color); padding: 1rem;">
+              <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 0.5rem;">
+                <div style="font-weight:700; color: var(--text-primary);">Sent Alerts</div>
+                <span class="badge badge-secondary" id="sentAlertsCount">0</span>
+              </div>
+              <div id="sentAlertsBody">
+                <div class="text-muted">Loading…</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pending Attendance Alerts -->
+          {% if pending_attendance_count > 0 %}
+          <div class="card" style="border-left: 4px solid var(--warning-color);">
+            <div class="card-header" style="border-bottom: 0; padding-bottom: 0; margin-bottom: 0.5rem;">
+              <h3 class="card-title" style="color: var(--text-primary); font-size: 1rem;">⚠️ Outstanding Tasks</h3>
+            </div>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem; line-height: 1.5;">
+              You have <strong>{{ pending_attendance_count }} classes</strong> that require attendance marking.
+            </p>
+            <a href="{{ url_for('faculty.attendance') }}" class="btn btn-sm btn-warning"
+              style="width: 100%; justify-content: center;">Review Pending</a>
+          </div>
+          {% endif %}
+
+          <!-- Low Attendance Alert -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Low Attendance</h3>
+            </div>
+            {% if low_attendance_count > 0 %}
+            <div style="margin-bottom: 1.25rem; text-align: center;">
+              <div style="font-size: 2.5rem; font-weight: 800; color: var(--error-color); line-height: 1;">{{
+                low_attendance_count }}</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500; margin-top: 5px;">Students
+                below 75%</div>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" style="width: 100%; justify-content: center;"
+              onclick="openLowAttendanceModal()">View At-Risk List</button>
+            {% else %}
+            <div style="text-align: center; color: var(--success-color); padding: 1.5rem 1rem;">
+              <div style="font-size: 2rem; margin-bottom: 0.5rem;">✅</div>
+              <strong style="display: block; margin-bottom: 0.25rem;">On Track</strong>
+              <span style="font-size: 0.85rem; opacity: 0.8;">No students at risk.</span>
+            </div>
+            {% endif %}
+          </div>
+
+          <!-- Quick Actions -->
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">Quick Actions</h3>
+            </div>
+            <div class="quick-actions-grid">
+              <a href="{{ url_for('faculty.marks') }}" class="btn-quick">
+                <span style="margin-right: 10px; font-size: 1.1rem;">💯</span> Update Marks
+              </a>
+              <a href="{{ url_for('faculty.resources') }}" class="btn-quick">
+                <span style="margin-right: 10px; font-size: 1.1rem;">📂</span> Upload Resources
+              </a>
+              <a href="{{ url_for('faculty.assessments') }}" class="btn-quick">
+                <span style="margin-right: 10px; font-size: 1.1rem;">📝</span> Create Quiz
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Modals (Low Att etc) -->
+  <div id="lowAttendanceModal" class="modal">
+    <div class="modal-content">
+      <span class="close-btn" onclick="closeLowAttendanceModal()">&times;</span>
+      <div class="modal-header">
+        <h2>⚠️ Low Attendance Students</h2>
+        <p class="text-muted">Students with overall attendance below 75%</p>
+      </div>
+      <div class="modal-body">
+        {% if low_attendance_list %}
+        {% for student in low_attendance_list %}
+        <div class="student-list-item">
+          <div class="student-info">
+            <strong>{{ student.name }}</strong>
+            <span>{{ student.display_id }} • {{ student.branch }} - {{ student.section }}</span>
+          </div>
+          <div class="attendance-badge">{{ student.percentage }}%</div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted">No data available.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Suspend Class Modal -->
+  <div id="suspendModal" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <span class="close-btn" onclick="closeSuspendModal()">&times;</span>
+      <div class="modal-header">
+        <h2>⚠️ Suspend Class</h2>
+        <p class="text-muted">Are you sure you want to suspend this class?</p>
+      </div>
+      <div class="modal-body">
+        <p><strong id="suspendClassName"></strong></p>
+        <p class="text-muted" style="font-size: 0.9rem;">This action will mark the class as cancelled for today.</p>
+
+        <div class="form-group" style="margin-top: 15px;">
+          <label for="suspendReason">Reason for Suspension</label>
+          <textarea id="suspendReason" class="form-control" rows="3"
+            placeholder="e.g. Faculty on leave, Emergency..."></textarea>
+        </div>
+
+        <div style="display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end;">
+          <button class="btn btn-secondary" onclick="closeSuspendModal()">Cancel</button>
+          <button class="btn btn-danger" onclick="confirmSuspendClass()">Suspend Class</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSuspendId = null;
+    let currentSuspendDate = null;
+
+    function openSuspendModal(id, name, date) {
+      currentSuspendId = id;
+      currentSuspendDate = date;
+      document.getElementById('suspendClassName').textContent = name;
+      document.getElementById('suspendReason').value = '';
+      document.getElementById('suspendModal').style.display = 'flex';
+    }
+
+    function closeSuspendModal() {
+      document.getElementById('suspendModal').style.display = 'none';
+      currentSuspendId = null;
+    }
+
+    async function confirmSuspendClass() {
+      if (!currentSuspendId) return;
+      const reason = document.getElementById('suspendReason').value;
+      if (!reason) {
+        alert("Please provide a reason.");
+        return;
+      }
+
+      try {
+        const res = await fetch("{{ url_for('faculty.suspend_class') }}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            entry_id: parseInt(currentSuspendId), // Convert to int as backend expects int ID
+            reason: reason,
+            date: currentSuspendDate
+          })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          // simple reload to reflect changes
+          window.location.reload();
+        } else {
+          alert(data.error || "Failed to suspend class");
+        }
+      } catch (e) {
+        alert("Error: " + e.message);
+      }
+    }
+  </script>
+
+  <script>
+    function openLowAttendanceModal() { document.getElementById('lowAttendanceModal').style.display = 'flex'; }
+    function closeLowAttendanceModal() { document.getElementById('lowAttendanceModal').style.display = 'none'; }
+    window.onclick = function (e) {
+      if (e.target == document.getElementById('lowAttendanceModal')) closeLowAttendanceModal();
+    }
+  </script>
+
+  <style>
+    /* Minimal, scoped styles for Period Alerts */
+    .period-alert {
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+      background: var(--bg-primary);
+    }
+
+    .period-alert.pending {
+      border-left: 4px solid var(--warning-color);
+    }
+
+    .period-alert.accepted {
+      border-left: 4px solid var(--success-color);
+      opacity: 0.95;
+    }
+
+    .period-alert.rejected {
+      border-left: 4px solid var(--error-color);
+      opacity: 0.9;
+    }
+
+    .period-alert .meta {
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 4px;
+    }
+
+    .period-alert .actions {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 10px;
+    }
+
+    .period-alert .status-pill {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 999px;
+      margin-top: 8px;
+    }
+
+    .period-alert .status-pill.pending {
+      background: rgba(245, 158, 11, 0.15);
+      color: #92400e;
+    }
+
+    .period-alert .status-pill.accepted {
+      background: rgba(16, 185, 129, 0.15);
+      color: #065f46;
+    }
+
+    .period-alert .status-pill.rejected {
+      background: rgba(239, 68, 68, 0.12);
+      color: #991b1b;
+    }
+
+    /* Consistent Action Buttons for Schedule Card */
+    .btn-schedule-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.35rem 1rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 6px;
+      min-width: 80px;
+      height: 32px;
+      line-height: normal;
+      /* Fix alignment */
+      text-decoration: none;
+      transition: all 0.2s ease;
+      /* Ensure borders - sometimes outline classes need help if framework is incomplete */
+      border-width: 1px;
+      border-style: solid;
+    }
+
+    .btn-schedule-action:hover {
+      transform: translateY(-2px);
+    }
+
+    /* Specific Hover Colors */
+    .btn-schedule-action.btn-outline-warning:hover {
+      background-color: #f59e0b;
+      color: white;
+      border-color: #f59e0b;
+      box-shadow: 0 4px 6px rgba(245, 158, 11, 0.25);
+    }
+
+    .btn-schedule-action.btn-outline-danger:hover {
+      background-color: #ef4444;
+      color: white;
+      border-color: #ef4444;
+      box-shadow: 0 4px 6px rgba(239, 68, 68, 0.25);
+    }
+
+    .btn-schedule-action.btn-outline-secondary:hover {
+      background-color: #6b7280;
+      color: white;
+      border-color: #6b7280;
+      box-shadow: 0 4px 6px rgba(107, 114, 128, 0.25);
+    }
+  </style>
+
+  <script>
+    // Near-real-time Period Alerts (polling)
+    async function fetchPeriodAlerts() {
+      try {
+        const res = await fetch("{{ url_for('faculty.fetch_period_alerts') }}");
+        const data = await res.json();
+        renderPeriodAlerts(data);
+        updatePeriodAlertsBadge(data);
+      } catch (e) {
+        const body = document.getElementById('periodAlertsBody');
+        if (body) body.innerHTML = '<div class="text-muted">Unable to load alerts right now.</div>';
+      }
+    }
+
+    function updatePeriodAlertsBadge(data) {
+      const pending = (data && data.counts && data.counts.pending_to_me) ? data.counts.pending_to_me : 0;
+      const btn = document.querySelector('.notification-btn');
+      if (!btn) return;
+
+      let badge = btn.querySelector('.notification-badge');
+      if (pending > 0) {
+        if (!badge) {
+          badge = document.createElement('span');
+          badge.className = 'notification-badge';
+          btn.appendChild(badge);
+        }
+      } else {
+        if (badge) badge.remove();
+      }
+    }
+
+    function statusToClass(status) {
+      const s = String(status || '').toUpperCase();
+      if (s === 'PENDING') return 'pending';
+      if (s === 'ACCEPTED') return 'accepted';
+      if (s === 'REJECTED') return 'rejected';
+      return 'pending';
+    }
+
+    function escapeHtml(str) {
+      return String(str || '').replace(/[&<>"']/g, function (m) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[m];
+      });
+    }
+
+    function renderPeriodAlerts(data) {
+      const body = document.getElementById('periodAlertsBody');
+      if (!body) return;
+
+      const alertsToMe = (data && data.alerts_to_me) ? data.alerts_to_me : [];
+      const pending = alertsToMe.filter(a => String(a.status).toUpperCase() === 'PENDING');
+
+      if (pending.length === 0) {
+        body.innerHTML = '<div class="text-muted">No pending period alerts.</div>';
+      } else {
+        body.innerHTML = pending.map(a => {
+          const cls = statusToClass(a.status);
+          const title = `${escapeHtml(a.subject_name)} • ${escapeHtml(a.class_str)}`;
+          const when = `${escapeHtml(a.date)} • ${escapeHtml(a.time)}`;
+          const from = `From: ${escapeHtml(a.alerted_by_name)}`;
+          const reason = escapeHtml(a.reason);
+          return `
+            <div class="period-alert ${cls}" data-alert-id="${a.id}">
+              <div style="font-weight: 700; color: var(--text-primary);">${title}</div>
+              <div class="meta">${when} • ${from}</div>
+              <div class="meta">Reason: ${reason}</div>
+              <div class="actions">
+                <button class="btn btn-sm btn-success" onclick="acceptPeriodAlert('${a.id}')">Accept</button>
+                <button class="btn btn-sm btn-danger" onclick="rejectPeriodAlert('${a.id}')">Reject</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      renderSentAlerts(data);
+    }
+
+    function renderSentAlerts(data) {
+      const body = document.getElementById('sentAlertsBody');
+      const countEl = document.getElementById('sentAlertsCount');
+      if (!body || !countEl) return;
+
+      const sent = (data && data.alerts_by_me) ? data.alerts_by_me : [];
+      countEl.textContent = String(sent.length || 0);
+
+      if (!sent.length) {
+        body.innerHTML = '<div class="text-muted">No sent alerts yet.</div>';
+        return;
+      }
+
+      // Show last 2 for compactness
+      const items = sent.slice(0, 2);
+      body.innerHTML = items.map(a => {
+        const cls = statusToClass(a.status);
+        const title = `${escapeHtml(a.subject_name)} • ${escapeHtml(a.class_str)}`;
+        const when = `${escapeHtml(a.date)} • ${escapeHtml(a.time)}`;
+        const to = `To: ${escapeHtml(a.alerted_to_name)}`;
+        const reason = escapeHtml(a.reason);
+        const statusLabel = String(a.status || '').toUpperCase();
+        return `
+          <div class="period-alert ${cls}">
+            <div style="font-weight: 700; color: var(--text-primary);">${title}</div>
+            <div class="meta">${when} • ${to}</div>
+            <div class="meta">Reason: ${reason}</div>
+            <div class="status-pill ${cls}">${statusLabel}</div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function setAlertActionsDisabled(alertId) {
+      const el = document.querySelector(`.period-alert[data-alert-id="${alertId}"]`);
+      if (!el) return;
+      el.querySelectorAll('button').forEach(b => b.disabled = true);
+    }
+
+    async function acceptPeriodAlert(alertId) {
+      setAlertActionsDisabled(alertId);
+      const res = await fetch("{{ url_for('faculty.accept_period_alert') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alert_id: alertId })
+      });
+      await res.json().catch(() => ({}));
+      fetchPeriodAlerts();
+    }
+
+    async function rejectPeriodAlert(alertId) {
+      setAlertActionsDisabled(alertId);
+      const res = await fetch("{{ url_for('faculty.reject_period_alert') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alert_id: alertId })
+      });
+      await res.json().catch(() => ({}));
+      fetchPeriodAlerts();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchPeriodAlerts();
+      setInterval(fetchPeriodAlerts, 15000);
+    });
+  </script>
+
+</div>
+{% endblock %}

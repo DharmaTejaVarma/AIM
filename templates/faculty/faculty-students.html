@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}My Students | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  <!-- Sidebar -->
+  {% set active_page = 'my_students' %}
+  {% include 'includes/faculty_sidebar.html' %}
+
+  <!-- Main Content -->
+  <main class="main">
+    <header class="topbar">
+      <h2 style="font-size: 1.25rem; margin: 0; color: var(--text-primary);">My Students</h2>
+      <div class="user-area">
+        <button class="notification-btn">🔔</button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div class="page-header">
+        <div>
+          <h1>Student Directory</h1>
+          <p class="page-subtitle">Access student profiles, academic records, and performance data.</p>
+        </div>
+      </div>
+
+      <!-- Filters Card -->
+      <div class="card mb-4" style="border-left: 4px solid var(--primary-color);">
+        <div class="card-body">
+          <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.5rem; align-items: end;">
+
+            <div class="form-group mb-0">
+              <label for="classFilter" class="form-label">Select Class</label>
+              <select id="classFilter" class="form-select" onchange="loadStudents()">
+                <option value="">All Classes</option>
+                {% for offering in class_offerings %}
+                <option value="{{ offering.id }}">
+                  {{ offering.branch }} Y{{ offering.year }} {{ offering.section }} - {{ offering.subject.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="form-group mb-0">
+              <label for="searchInput" class="form-label">Search Student</label>
+              <div class="search-wrap" style="width: 100%;">
+                <input type="text" id="searchInput" class="form-input" placeholder="Search by name, ID or email..."
+                  onkeyup="filterTable()">
+                <span class="search-icon">🔍</span>
+              </div>
+            </div>
+
+            <div class="form-group mb-0">
+              <button class="btn btn-secondary w-100" onclick="exportStudents()">
+                <span class="action-icon">📥</span> Export CSV
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Students List -->
+      <div class="card">
+        <div class="card-header border-bottom d-flex justify-content-between align-items-center">
+          <h3 class="card-title">Registered Students</h3>
+          <span class="badge badge-secondary" id="countDisplay">0 Records</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 15%;">Student ID</th>
+                <th style="width: 25%;">Name</th>
+                <th style="width: 25%;">Email</th>
+                <th style="width: 20%;">Class</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody">
+              <tr>
+                <td colspan="5" class="text-center py-5 text-muted">
+                  <div style="font-size: 2rem; margin-bottom: 0.5rem;">👥</div>
+                  Select a class above to load students.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<script>
+  let allStudents = [];
+
+  document.addEventListener('DOMContentLoaded', loadStudents);
+
+  async function loadStudents() {
+    const classId = document.getElementById('classFilter').value;
+    const tbody = document.getElementById('studentsTableBody');
+
+    // UI Loading State
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5">Loading students...</td></tr>';
+
+    try {
+      const response = await fetch("{{ url_for('faculty.fetch_students_list') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ class_id: classId })
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch");
+
+      const data = await response.json();
+      allStudents = data.students;
+      renderStudents(allStudents);
+    } catch (e) {
+      console.error("Error loading students:", e);
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger py-5">Error loading data. Please try again.</td></tr>';
+    }
+  }
+
+  function renderStudents(students) {
+    const tbody = document.getElementById('studentsTableBody');
+    document.getElementById('countDisplay').textContent = `${students.length} Records`;
+
+    if (students.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5 text-muted">No students found for this selection.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = students.map(s => `
+        <tr>
+            <td><span class="font-mono font-weight-bold text-primary">${s.student_id}</span></td>
+            <td>
+                <div class="font-weight-bold">${s.name}</div>
+            </td>
+            <td class="text-muted">${s.email}</td>
+            <td>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <span class="font-weight-bold" style="font-size: 0.85rem; color: var(--text-primary);">${s.branch}</span>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <span class="badge badge-secondary" style="font-size: 0.75rem;">Year ${s.year}</span>
+                        <span class="badge badge-info" style="font-size: 0.75rem;">Section ${s.section}</span>
+                    </div>
+                </div>
+            </td>
+            <td class="text-right">
+                <a href="/faculty/student/${s.id}" class="btn btn-sm btn-outline-primary">
+                    View Profile
+                </a>
+            </td>
+        </tr>
+    `).join('');
+  }
+
+  function filterTable() {
+    const term = document.getElementById('searchInput').value.toLowerCase();
+    const filtered = allStudents.filter(s =>
+      (s.name && s.name.toLowerCase().includes(term)) ||
+      (s.student_id && s.student_id.toLowerCase().includes(term)) ||
+      (s.email && s.email.toLowerCase().includes(term))
+    );
+    renderStudents(filtered);
+  }
+
+  function exportStudents() {
+    const classId = document.getElementById('classFilter').value;
+    if (!classId) { alert("Please select a class to export."); return; }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('faculty.export_students_list') }}";
+    const i1 = document.createElement('input'); i1.type = 'hidden'; i1.name = 'class_id'; i1.value = classId; form.appendChild(i1);
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  }
+</script>
+{% endblock %}

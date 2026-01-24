@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Attendance - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="student-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="student-profile.html" class="nav-item">
+          <span class="nav-icon">👤</span>
+          My Profile
+        </a>
+        <a href="student-assignments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assignments
+        </a>
+        <a href="student-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="student-attendance.html" class="nav-item active">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="student-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="student-resources.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">🎓</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Student User</div>
+            <div class="user-role" id="current-role">Undergraduate</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search attendance..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="window.handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="attendanceAlert"></div>
+
+        <div class="page-header">
+          <h1>My Attendance</h1>
+          <p class="page-subtitle">Track your attendance records and overall percentage</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card success">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+              <div class="stat-label">Overall Attendance</div>
+              <div class="stat-value" id="overallAttendance">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-content">
+              <div class="stat-label">Total Classes</div>
+              <div class="stat-value" id="totalClasses">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🟢</div>
+            <div class="stat-content">
+              <div class="stat-label">Classes Present</div>
+              <div class="stat-value" id="classesPresent">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🔴</div>
+            <div class="stat-content">
+              <div class="stat-label">Classes Absent</div>
+              <div class="stat-value" id="classesAbsent">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <h3>Attendance Calendar</h3>
+            <div class="calendar-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+              <button class="btn btn-secondary btn-sm" onclick="studentAttendance.changeMonth(-1)">← Prev</button>
+              <h4 id="currentMonth" style="margin: 0;">November 2024</h4>
+              <button class="btn btn-secondary btn-sm" onclick="studentAttendance.changeMonth(1)">Next →</button>
+            </div>
+            <div id="calendarGrid" class="calendar-grid">
+              <!-- Calendar days populated by JS -->
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <h3>Recent Attendance</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Subject</th>
+                    <th>Status</th>
+                    <th>Reason</th>
+                    <th>Marked By</th>
+                  </tr>
+                </thead>
+                <tbody id="recentAttendanceBody">
+                  <!-- Recent attendance populated by JS -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar" style="margin-top: 32px;">
+          <div class="filter-group">
+            <select id="monthFilter" class="form-select" onchange="studentAttendance.changeMonth(0)">
+              <option value="">Select Month</option>
+              <!-- Options populated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 32px;">
+          <h3>Subject-wise Attendance</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Subject Name</th>
+                  <th>Code</th>
+                  <th>Total Classes</th>
+                  <th>Present</th>
+                  <th>Absent</th>
+                  <th>Percentage</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="subjectAttendanceBody">
+                <!-- Subject-wise attendance populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="dashboard-grid" style="margin-top: 32px;">
+          <div class="dashboard-card">
+            <h3>Weekly Trend</h3>
+            <div id="weeklyChart" style="padding: 10px;">
+              <!-- Weekly trend bars populated by JS -->
+            </div>
+          </div>
+          <!-- Removed Attendance Insights Card -->
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/student-attendance.js"></script>
+
+  <style>
+    .calendar-grid {
+      background: var(--bg-primary);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 15px;
+      box-shadow: var(--shadow);
+    }
+
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 15px;
+    }
+
+    .calendar-header h4 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: var(--text-primary);
+    }
+
+    .calendar-header button {
+      padding: 8px 15px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .calendar-day {
+      padding: 10px;
+      min-height: 60px;
+      background: var(--bg-secondary);
+      text-align: center;
+      border-radius: 8px;
+      font-weight: 500;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border-color);
+    }
+
+    .calendar-day:hover {
+      background: var(--bg-tertiary);
+      transform: translateY(-2px);
+    }
+
+    .calendar-day.empty {
+      background: var(--bg-tertiary);
+      color: var(--text-muted);
+      cursor: default;
+    }
+
+    .calendar-day.present {
+      background: var(--accent-success);
+      color: white;
+      border-color: var(--accent-success);
+    }
+
+    .calendar-day.absent {
+      background: var(--accent-danger);
+      color: white;
+      border-color: var(--accent-danger);
+    }
+
+    .calendar-day.present:hover,
+    .calendar-day.absent:hover {
+      filter: brightness(1.1);
+    }
+
+    .stat-card.success {
+      background: linear-gradient(135deg, var(--accent-success), #28a745);
+      color: white;
+    }
+
+    .stat-card.warning {
+      background: linear-gradient(135deg, var(--accent-warning), #ffc107);
+      color: white;
+    }
+
+    .stat-card.error {
+      background: linear-gradient(135deg, var(--accent-danger), #dc3545);
+      color: white;
+    }
+
+    .stat-card.success::before,
+    .stat-card.warning::before,
+    .stat-card.error::before {
+      background: none;
+    }
+
+    .stat-card.success .stat-icon,
+    .stat-card.warning .stat-icon,
+    .stat-card.error .stat-icon {
+      background: rgba(255, 255, 255, 0.2);
+      color: white;
+    }
+
+    .stat-card.success .stat-label,
+    .stat-card.warning .stat-label,
+    .stat-card.error .stat-label {
+      color: rgba(255, 255, 255, 0.8);
+    }
+
+    .stat-card.success .stat-value,
+    .stat-card.warning .stat-value,
+    .stat-card.error .stat-value {
+      color: white;
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Departments - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="./admin-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="./admin-students.html" class="nav-item">
+          <span class="nav-icon">🎓</span>
+          Students
+        </a>
+        <a href="./admin-faculty.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          Faculty
+        </a>
+        <a href="./admin-departments.html" class="nav-item active">
+          <span class="nav-icon">🏢</span>
+          Departments
+        </a>
+        <a href="./admin-subjects.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Subjects
+        </a>
+        <a href="./admin-subject-allocation.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Subject Allocation
+        </a>
+        <a href="./admin-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="./admin-external-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          External Marks
+        </a>
+        <a href="./admin-fees.html" class="nav-item">
+          <span class="nav-icon">💰</span>
+          Fees
+        </a>
+        <a href="./admin-announcements.html" class="nav-item">
+          <span class="nav-icon">📢</span>
+          Announcements
+        </a>
+        <a href="./admin-analytics.html" class="nav-item">
+          <span class="nav-icon">📈</span>
+          Analytics
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👤</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Admin User</div>
+            <div class="user-role" id="current-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search departments..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="departmentsAlert"></div>
+
+        <div class="page-header">
+          <h1>Departments Management</h1>
+          <p class="page-subtitle">Manage academic departments, their codes, and heads of department</p>
+        </div>
+
+        <div class="action-bar">
+          <div class="left-actions">
+            <button class="btn btn-primary" onclick="showAddDepartmentModal()">
+              <span class="action-icon">➕</span> Add New Department
+            </button>
+            <button class="btn btn-secondary" onclick="exportDepartments()">
+              <span class="action-icon">📤</span> Export CSV
+            </button>
+            <button class="btn btn-danger" onclick="deleteAllDepartments()">
+              <span class="action-icon">🗑️</span> Delete All
+            </button>
+          </div>
+          <div class="right-actions">
+            <input type="text" id="searchInput" class="form-input" placeholder="Search departments...">
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 2rem;">
+          <h3>All Departments <span class="badge badge-info" id="totalCount">-- departments</span></h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Name</th>
+                  <th>Head of Department</th>
+                  <th>Students</th>
+                  <th>Faculty</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="departmentsTableBody">
+                <!-- Department data populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="departmentModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="hideDepartmentModal()">×</span>
+      <h2 id="departmentModalTitle">Add Department</h2>
+      <form id="departmentForm">
+        <input type="hidden" id="departmentId">
+        <div class="form-group">
+          <label for="departmentName">Department Name</label>
+          <input type="text" id="departmentName" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="departmentCode">Department Code</label>
+          <input type="text" id="departmentCode" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="headOfDepartment">Head of Department</label>
+          <input type="text" id="headOfDepartment" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="totalStudents">Total Students (Read-only)</label>
+          <input type="text" id="totalStudents" class="form-input" readonly>
+        </div>
+        <div class="form-group">
+          <label for="totalFaculty">Total Faculty (Read-only)</label>
+          <input type="text" id="totalFaculty" class="form-input" readonly>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="hideDepartmentModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Department</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/admin-departments.js"></script>
+</body>
+</html>

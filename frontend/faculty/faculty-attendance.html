@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faculty Attendance - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="./faculty-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="./faculty-profile.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          My Profile
+        </a>
+        <a href="./faculty-students.html" class="nav-item">
+          <span class="nav-icon">🎓</span>
+          My Students
+        </a>
+        <a href="./faculty-assessments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assessments
+        </a>
+        <a href="./faculty-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="./faculty-attendance.html" class="nav-item active">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="./faculty-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="./faculty-resources.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👨‍🏫</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Faculty User</div>
+            <div class="user-role" id="current-role">Professor</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search attendance..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="attendanceAlert"></div>
+
+        <div class="page-header">
+          <h1>Attendance Management</h1>
+          <p class="page-subtitle">Mark and view student attendance for your classes</p>
+        </div>
+
+        <div class="action-bar">
+          <div class="left-actions">
+            <button class="btn btn-primary" onclick="openAttendanceEntryModal()">
+              <span class="action-icon">➕</span> Mark Attendance
+            </button>
+            <button class="btn btn-secondary" onclick="facultyAttendance.exportAttendance()">
+              <span class="action-icon">📤</span> Export CSV
+            </button>
+          </div>
+          <div class="filter-group">
+            <select id="subjectFilter" class="form-select" onchange="facultyAttendance.loadAttendance()">
+              <option value="">Select Subject & Class</option>
+              <!-- Options populated by JS -->
+            </select>
+            <input type="date" id="dateFilter" class="form-input" onchange="facultyAttendance.loadAttendance()">
+            <select id="monthFilter" class="form-select" onchange="facultyAttendance.loadMonthlyOverview()">
+              <option value="">Select Month</option>
+              <!-- Options populated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <div id="attendanceStats" class="stats-grid" style="display: none;">
+          <div class="stat-card">
+            <div class="stat-icon">🎓</div>
+            <div class="stat-content">
+              <div class="stat-label">Total Students</div>
+              <div class="stat-value" id="totalStudents">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-content">
+              <div class="stat-label">Present</div>
+              <div class="stat-value" id="presentCount">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <div class="stat-content">
+              <div class="stat-label">Absent</div>
+              <div class="stat-value" id="absentCount">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+              <div class="stat-label">Attendance Rate</div>
+              <div class="stat-value" id="attendanceRate">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 2rem;">
+          <h3>Daily Attendance Details</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Class Time</th>
+                  <th>Status</th>
+                  <th>Reason</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="attendanceTableBody">
+                <!-- Attendance data populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="monthlyOverview" class="dashboard-card full-width" style="margin-top: 2rem; display: none;">
+          <h3>Monthly Attendance Overview</h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Total Classes</th>
+                  <th>Present</th>
+                  <th>Absent</th>
+                  <th>Percentage</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="monthlyOverviewBody">
+                <!-- Monthly overview data populated by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="attendanceModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="hideAttendanceModal()">×</span>
+      <h2>Mark Attendance</h2>
+      <form id="attendanceForm">
+        <div class="form-group">
+          <label for="attendanceSubject">Subject & Class</label>
+          <select id="attendanceSubject" class="form-select" required onchange="facultyAttendance.handleSubjectChange()">
+            <option value="">Select Subject & Class</option>
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="attendanceDate">Date</label>
+          <input type="date" id="attendanceDate" class="form-input" required onchange="facultyAttendance.handleSubjectChange()">
+        </div>
+        <div class="form-group">
+          <label for="attendancePeriod">Period</label>
+          <select id="attendancePeriod" class="form-select" required disabled onchange="facultyAttendance.handlePeriodChange()">
+            <option value="">Select Period</option>
+            <!-- Options populated by JS -->
+          </select>
+          <input type="hidden" id="attendanceTime"> <!-- Hidden input to store selected time -->
+        </div>
+
+        <div id="studentsAttendanceList" style="display: none; margin-top: 1.25rem;">
+          <h4>Mark Students Present/Absent</h4>
+          <div class="bulk-actions" style="display: flex; gap: 0.625rem; margin-bottom: 0.9375rem;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="markAllPresent()">Mark All Present</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="markAllAbsent()">Mark All Absent</button>
+          </div>
+          <div id="studentsAttendanceBody" class="students-attendance-grid">
+            <!-- Student attendance items populated by JS -->
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="hideAttendanceModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Attendance</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="editAttendanceModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="hideEditAttendanceModal()">×</span>
+      <h2>Edit Attendance Record</h2>
+      <form id="editAttendanceForm">
+        <input type="hidden" id="editAttendanceRecordId">
+        <div class="form-group">
+          <label>Student Name</label>
+          <input type="text" id="editStudentName" class="form-input" readonly>
+        </div>
+        <div class="form-group">
+          <label>Subject</label>
+          <input type="text" id="editSubjectName" class="form-input" readonly>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="editAttendanceDate" class="form-input" readonly>
+        </div>
+        <div class="form-group">
+          <label for="editAttendanceTime">Class Time</label>
+          <input type="time" id="editAttendanceTime" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="editAttendanceStatus">Status</label>
+          <select id="editAttendanceStatus" class="form-select" required onchange="toggleEditReasonField()">
+            <option value="present">Present</option>
+            <option value="absent">Absent</option>
+          </select>
+        </div>
+        <div id="editReasonGroup" class="form-group" style="display: none;">
+          <label for="editAttendanceReason">Reason for Change / Absence</label>
+          <textarea id="editAttendanceReason" class="form-textarea" rows="3"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="hideEditAttendanceModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/faculty-attendance.js"></script>
+</body>
+</html>

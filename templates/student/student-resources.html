@@ -1,0 +1,329 @@
+{% extends "base.html" %}
+
+{% block title %}Student Resources - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'resources' %}
+  {% include 'includes/student_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">My Resources</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div id="resourcesAlert"></div>
+
+      <div class="page-header">
+        <h1>My Resources</h1>
+        <p class="page-subtitle">Access learning materials uploaded by your faculty</p>
+      </div>
+
+      <div class="action-bar">
+        <div class="filter-group">
+          <input type="text" id="searchInput" class="form-input" placeholder="Search resources...">
+          <select id="subjectFilter" class="form-select">
+            <option value="">All My Subjects</option>
+            <!-- Options populated by JS -->
+          </select>
+          <select id="typeFilter" class="form-select">
+            <option value="">All Types</option>
+            <option value="lecture_notes">Lecture Notes</option>
+            <option value="syllabus">Syllabus</option>
+            <option value="question_bank">Question Bank</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="dashboard-card full-width" style="margin-top: 32px;">
+        <h3>Available Resources <span class="badge badge-info" id="totalResourcesCount">-- resources</span></h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Subject</th>
+                <th>Type</th>
+                <th>Uploaded By</th>
+                <th>Upload Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="resourcesTableBody">
+              <!-- Resources data populated by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination">
+          <!-- Pagination buttons populated by JS -->
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Modal -->
+  <div id="notificationModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="toggleNotificationModal()">×</span>
+      <h2>Notifications History</h2>
+      <div class="notification-list" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+        {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement-item" style="padding: 15px 0; border-bottom: 1px solid var(--border-color);">
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px; color: var(--text-primary);">{{
+            ann.title }}</div>
+          <p class="text-muted" style="margin: 0 0 4px; font-size: 0.9rem;">{{ ann.content }}</p>
+          <div class="text-muted small" style="font-size: 0.8rem;">{{ ann.date }} • <span class="badge badge-info">{{
+              ann.priority|capitalize }}</span></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center">No notifications found.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleNotificationModal() {
+      const modal = document.getElementById('notificationModal');
+      if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+      } else {
+        modal.style.display = 'block';
+      }
+    }
+
+    // Bind bell click
+    const notificationBtn = document.querySelector('.notification-btn');
+    if (notificationBtn) {
+      notificationBtn.onclick = toggleNotificationModal;
+    }
+
+    // Close on outside click
+    window.onclick = function (event) {
+      const modal = document.getElementById('notificationModal');
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+
+      const viewModal = document.getElementById('viewModal');
+      if (viewModal && event.target == viewModal) closeViewModal();
+    }
+  </script>
+
+  <!-- View Modal -->
+  <div id="viewModal" class="modal">
+    <div class="modal-content" style="max-width: 75%; height: 95vh; display: flex; flex-direction: column;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+        <h2 id="viewTitle" style="margin: 0;">View Resource</h2>
+        <span class="close-button" onclick="closeViewModal()">×</span>
+      </div>
+
+      <div id="viewContainer"
+        style="flex: 1; background: #f9f9f9; border: 1px solid #ddd; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+        <!-- Content will be injected here -->
+        <p class="text-muted">Loading...</p>
+      </div>
+
+      <div class="form-actions" style="margin-top: 15px; justify-content: flex-end;">
+        <a id="viewDownloadBtn" href="#" class="btn btn-primary">Download</a>
+        <button type="button" class="btn btn-secondary" onclick="closeViewModal()">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Core Scripts -->
+<script src="/static/js/database.js"></script>
+<script src="/static/js/auth.js"></script>
+<script>
+  const studentResources = {
+    resources: [],
+    itemsPerPage: 5,
+    currentPage: 1,
+
+    init() {
+      this.loadResources();
+
+      // Event listeners
+      document.getElementById('searchInput').addEventListener('input', () => this.filterResources());
+      document.getElementById('subjectFilter').addEventListener('change', () => this.filterResources());
+      document.getElementById('typeFilter').addEventListener('change', () => this.filterResources());
+    },
+
+    async loadResources() {
+      try {
+        const response = await fetch("{{ url_for('student.fetch_resources_data') }}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch resources');
+
+        const data = await response.json();
+        this.resources = data.resources;
+
+        this.populateSubjectFilter(data.subjects);
+        this.filterResources(); // Initial render
+
+      } catch (error) {
+        console.error(error);
+        document.getElementById('resourcesAlert').innerHTML =
+          `<div class="alert alert-danger">${error.message}</div>`;
+      }
+    },
+
+    populateSubjectFilter(subjects) {
+      const select = document.getElementById('subjectFilter');
+      subjects.forEach(sub => {
+        const option = document.createElement('option');
+        option.value = sub.name; // Logic uses name for display filtering
+        option.textContent = sub.name;
+        select.appendChild(option);
+      });
+    },
+
+    filterResources() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const subject = document.getElementById('subjectFilter').value;
+      const type = document.getElementById('typeFilter').value;
+
+      const filtered = this.resources.filter(r => {
+        const matchesSearch = r.title.toLowerCase().includes(search) || r.subject.toLowerCase().includes(search);
+        const matchesSubject = subject ? r.subject === subject : true;
+        const matchesType = type ? r.type === type : true;
+        return matchesSearch && matchesSubject && matchesType;
+      });
+
+      this.renderTable(filtered);
+      document.getElementById('totalResourcesCount').textContent = `${filtered.length} resources`;
+    },
+
+    renderTable(resources) {
+      const body = document.getElementById('resourcesTableBody');
+
+      if (resources.length === 0) {
+        body.innerHTML = '<tr><td colspan="5" class="text-center">No resources found.</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      // Pagination Logic
+      const totalPages = Math.ceil(resources.length / this.itemsPerPage);
+      if (this.currentPage > totalPages) this.currentPage = 1;
+
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      const end = start + this.itemsPerPage;
+      const pageItems = resources.slice(start, end);
+
+      body.innerHTML = pageItems.map(r => `
+            <tr>
+                <td>
+                    <strong>${r.title}</strong><br>
+                    <small class="text-muted">${r.description || ''}</small>
+                </td>
+                <td>${r.subject}</td>
+                <td>${this.formatType(r.type)}</td>
+                <td>${r.uploaded_by || '-'}</td>
+                <td>${r.date}</td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick='studentResources.openViewModal(${JSON.stringify(r)})'>👁️ View</button>
+                </td>
+            </tr>
+        `).join('');
+
+      this.renderPagination(totalPages);
+    },
+
+    formatType(type) {
+      return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    },
+
+    renderPagination(totalPages) {
+      const container = document.getElementById('pagination');
+      let html = '';
+
+      if (totalPages > 1) {
+        html += `<button class="btn btn-sm btn-secondary" onclick="studentResources.changePage(-1)" ${this.currentPage === 1 ? 'disabled' : ''}>Prev</button>`;
+
+        for (let i = 1; i <= totalPages; i++) {
+          html += `<button class="btn btn-sm ${this.currentPage === i ? 'btn-primary' : 'btn-secondary'}" onclick="studentResources.setPage(${i})">${i}</button>`;
+        }
+
+        html += `<button class="btn btn-sm btn-secondary" onclick="studentResources.changePage(1)" ${this.currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+      }
+
+      container.innerHTML = html;
+    },
+
+    changePage(offset) {
+      this.currentPage += offset;
+      this.filterResources();
+    },
+
+    setPage(page) {
+      this.currentPage = page;
+      this.filterResources();
+    },
+
+    openViewModal(resource) {
+      const modal = document.getElementById('viewModal');
+      const container = document.getElementById('viewContainer');
+      const title = document.getElementById('viewTitle');
+      const downloadBtn = document.getElementById('viewDownloadBtn');
+
+      modal.style.display = 'flex';
+      title.innerText = resource.title;
+      downloadBtn.href = `/student/resources/download/${resource.id}`;
+
+      const ext = resource.file_name ? resource.file_name.split('.').pop().toLowerCase() : '';
+      const previewUrl = `/student/resources/download/${resource.id}?inline=true`;
+
+      // Iframe supported types
+      const iframeTypes = ['pdf', 'txt', 'html', 'png', 'jpg', 'jpeg', 'gif', 'bmp'];
+
+      if (iframeTypes.includes(ext)) {
+        container.innerHTML = `<iframe src="${previewUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
+      } else {
+        container.innerHTML = `
+                <div style="text-align: center;">
+                    <p style="font-size: 3rem; margin-bottom: 1rem;">📄</p>
+                    <h3>Preview not available</h3>
+                    <p class="text-muted">This file type (.${ext}) cannot be previewed.</p>
+                    <a href="${downloadBtn.href}" class="btn btn-primary" style="margin-top: 1rem;">Download File</a>
+                </div>
+             `;
+      }
+    }
+  };
+
+  function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
+    document.getElementById('viewContainer').innerHTML = '';
+  }
+
+
+
+  document.addEventListener('DOMContentLoaded', () => {
+    studentResources.init();
+  });
+</script>
+
+
+
+</div>
+{% endblock %}

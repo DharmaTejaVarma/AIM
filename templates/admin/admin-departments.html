@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Departments - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'departments' %}
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Departments</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div id="departmentsAlert" class="alert" style="display: block;">
+        {% for category, message in messages %}
+        <div class="alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h1>Departments Management</h1>
+        <p class="page-subtitle">Manage academic departments, their codes, and heads of department</p>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <button class="btn btn-primary" onclick="showDepartmentModal()">
+            <span class="action-icon">➕</span> Add New Department
+          </button>
+          <a href="{{ url_for('admin.export_departments', search=search or '') }}" class="btn btn-outline-secondary">
+            <span class="action-icon">📤</span> Export CSV
+          </a>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <h3 class="card-title">All Departments</h3>
+          <span class="badge badge-info">{{ departments|length }} departments</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Code</th>
+                <th>Name</th>
+                <th>Head of Department</th>
+                <th class="text-center">Students</th>
+                <th class="text-center">Faculty</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for dept in departments %}
+              <tr>
+                <td style="font-weight: 600;">{{ dept.code }}</td>
+                <td>
+                  <a href="{{ url_for('admin.department_details', department_name=dept.name) }}"
+                    style="color: var(--primary-color); text-decoration: none; font-weight: 600;">
+                    {{ dept.name }}
+                  </a>
+                </td>
+                <td>{{ dept.get('head_of_department', 'Not Assigned') if dept.get('head_of_department') else 'Not
+                  Assigned' }}</td>
+                <td class="text-center">
+                  <span class="badge badge-info">{{ dept.student_count }}</span>
+                </td>
+                <td class="text-center">
+                  <span class="badge badge-success">{{ dept.faculty_count }}</span>
+                </td>
+                <td>
+                  <div class="action-buttons" style="justify-content: flex-end;">
+                    <button class="btn btn-sm btn-outline-secondary" data-dept='{{ dept|tojson }}'
+                      onclick='editDepartment(JSON.parse(this.dataset.dept))'>✏️ Edit</button>
+                    <form action="{{ url_for('admin.delete_department', id=dept.id) }}" method="POST"
+                      style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete this department?');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Add/Edit Department Modal -->
+<div id="departmentModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideDepartmentModal()">×</span>
+    <h2 id="modalTitle">Add Department</h2>
+    <form id="departmentForm" action="{{ url_for('admin.add_department') }}" method="POST">
+      <div class="form-group">
+        <label for="name">Department Name *</label>
+        <input type="text" id="name" name="name" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="code">Department Code *</label>
+        <input type="text" id="code" name="code" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="head_of_department">Head of Department</label>
+        <input type="text" id="head_of_department" name="head_of_department" class="form-input">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideDepartmentModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Department</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function showDepartmentModal() {
+    document.getElementById('departmentModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Add Department';
+    document.getElementById('departmentForm').action = "{{ url_for('admin.add_department') }}";
+    document.getElementById('departmentForm').reset();
+  }
+
+  function hideDepartmentModal() {
+    document.getElementById('departmentModal').style.display = 'none';
+  }
+
+  function editDepartment(department) {
+    document.getElementById('departmentModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Edit Department';
+    document.getElementById('departmentForm').action = `/admin/departments/edit/${department.id}`;
+
+    document.getElementById('name').value = department.name;
+    document.getElementById('code').value = department.code;
+    document.getElementById('head_of_department').value = department.head_of_department || '';
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function (event) {
+    if (event.target == document.getElementById('departmentModal')) {
+      hideDepartmentModal();
+    }
+  }
+</script>
+
+
+</div>
+{% endblock %}

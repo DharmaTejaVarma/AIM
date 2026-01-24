@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faculty Students - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="faculty-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="faculty-profile.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          My Profile
+        </a>
+        <a href="faculty-students.html" class="nav-item active">
+          <span class="nav-icon">🎓</span>
+          My Students
+        </a>
+        <a href="faculty-assessments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assessments
+        </a>
+        <a href="faculty-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="faculty-attendance.html" class="nav-item">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="faculty-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="faculty-resources.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👨‍🏫</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Faculty User</div>
+            <div class="user-role" id="current-role">Professor</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search students..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="facultyStudentsAlert"></div>
+
+        <div class="page-header">
+          <h1>My Students</h1>
+          <p class="page-subtitle">View students in your assigned classes</p>
+        </div>
+
+        <div class="action-bar">
+          <div class="filter-group">
+            <input type="text" id="searchInput" class="form-input" placeholder="Search students...">
+            <select id="subjectFilter" class="form-select">
+              <option value="">All My Subjects</option>
+              <!-- Options populated by JS -->
+            </select>
+            <select id="yearFilter" class="form-select">
+              <option value="">All Years</option>
+              <option value="1">Year 1</option>
+              <option value="2">Year 2</option>
+              <option value="3">Year 3</option>
+              <option value="4">Year 4</option>
+            </select>
+            <select id="semesterFilter" class="form-select">
+              <option value="">All Semesters</option>
+              <option value="1">Semester 1</option>
+              <option value="2">Semester 2</option>
+              <option value="3">Semester 3</option>
+              <option value="4">Semester 4</option>
+              <option value="5">Semester 5</option>
+              <option value="6">Semester 6</option>
+              <option value="7">Semester 7</option>
+              <option value="8">Semester 8</option>
+            </select>
+            <select id="sectionFilter" class="form-select">
+              <option value="">All Sections</option>
+              <option value="A">Section A</option>
+              <option value="B">Section B</option>
+              <option value="C">Section C</option>
+            </select>
+            <button class="btn btn-secondary" onclick="facultyStudents.exportStudents()">
+              <span class="action-icon">📤</span> Export CSV
+            </button>
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 2rem;">
+          <h3>Student Roster <span class="badge badge-info" id="totalStudentsCount">-- students</span></h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Branch</th>
+                  <th>Section</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTableBody">
+                <!-- Student data populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="pagination">
+            <!-- Pagination buttons populated by JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/faculty-students.js"></script>
+</body>
+</html>

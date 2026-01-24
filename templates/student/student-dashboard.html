@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Student Dashboard - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+    {% set active_page = 'dashboard' %}
+    {% include 'includes/student_sidebar.html' %}
+
+    <!-- Main Content -->
+    <main class="main">
+        <header class="topbar">
+            <div class="welcome-text">
+                <h2 style="font-size: 1.25rem; margin: 0; color: var(--text-primary);">Dashboard</h2>
+            </div>
+            <div class="user-area">
+                <span class="text-muted" style="font-size: 0.9em; margin-right: 15px;">{{ today_date }}</span>
+                <button class="notification-btn" onclick="toggleAnnouncements()">🔔</button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div class="page-header">
+                <h1>Welcome , {{ student.name }}</h1>
+                <p class="page-subtitle">{{ today_date }}</p>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card stat-card--green">
+                    <div class="stat-header">
+                        <div class="stat-label">Attendance</div>
+                        <div class="stat-icon">✅</div>
+                    </div>
+                    <div class="stat-value">{{ overall_attendance }}%</div>
+                    <div class="stat-subtext">Overall presence</div>
+                </div>
+
+                <div class="stat-card stat-card--blue">
+                    <div class="stat-header">
+                        <div class="stat-label">CGPA</div>
+                        <div class="stat-icon">📊</div>
+                    </div>
+                    <div class="stat-value">{{ current_cgpa if current_cgpa is not none else 'Pending' }}</div>
+                    <div class="stat-subtext">Current performance</div>
+                </div>
+
+                <div class="stat-card stat-card--sky">
+                    <div class="stat-header">
+                        <div class="stat-label">Credits</div>
+                        <div class="stat-icon">🏆</div>
+                    </div>
+                    <div class="stat-value">{{ credits_completed }}</div>
+                    <div class="stat-subtext">Completed credits</div>
+                </div>
+
+                <div class="stat-card stat-card--amber">
+                    <div class="stat-header">
+                        <div class="stat-label">Fee Due</div>
+                        <div class="stat-icon">💰</div>
+                    </div>
+                    <div class="stat-value {{ 'text-danger' if pending_fees > 0 else 'text-success' }}">
+                        ₹{{ pending_fees }}
+                    </div>
+                    <div class="stat-subtext">Outstanding amount</div>
+                </div>
+            </div>
+
+            <!-- Dual Column Layout -->
+            <div class="d-grid-2">
+
+                <!-- Left Column: Schedule & Attendance -->
+                <div class="dashboard-column">
+
+                    <!-- Today's Classes -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">📅 Today's Classes</h3>
+                            <a href="{{ url_for('student.timetable') }}" class="btn btn-sm btn-outline-secondary">Full
+                                Timetable</a>
+                        </div>
+
+                        {% if todays_classes %}
+                        <div class="timeline-container" style="padding: 1.5rem;">
+                            {% for cls in todays_classes %}
+                            <div class="timeline-item">
+                                <div class="time-col">
+                                    <div class="time-val">{{ cls.time.split(' - ')[0] }}</div>
+                                    <div class="time-sub">{{ cls.time.split(' - ')[1] }}</div>
+                                </div>
+                                <div class="marker-col">
+                                    <div
+                                        class="status-dot {{ 'completed' if cls.attendance_status == 'Present' else 'upcoming' }}">
+                                    </div>
+                                </div>
+                                <div class="content-col" style="flex-grow: 1; padding-bottom: 1.5rem;">
+                                    <div
+                                        style="display: flex; justify-content: space-between; align-items: flex-start;">
+                                        <div>
+                                            <h4 style="margin: 0 0 4px 0; font-size: 1rem;">{{ cls.subject }}</h4>
+                                            <p style="margin: 0; font-size: 0.85rem; color: var(--text-secondary);">
+                                                {{ cls.faculty }} • {{ cls.room }} • {{ cls.subject_type }}
+                                            </p>
+                                        </div>
+                                        <div
+                                            class="badge {{ 'badge-success' if cls.attendance_status == 'Present' else 'badge-secondary' }}">
+                                            {{ cls.attendance_status }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                            <div style="font-size: 2rem; margin-bottom: 1rem;">🎉</div>
+                            <p>No classes scheduled for today.</p>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Subject Attendance -->
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <h3 class="card-title">📈 Subject Attendance</h3>
+                        </div>
+                        <div class="attendance-list">
+                            {% for sub_name, data in subject_attendance.items() %}
+                            <div class="progress-item" style="margin-bottom: 12px;">
+                                <div class="progress-header"
+                                    style="display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.9rem;">
+                                    <a href="{{ url_for('student.attendance_detail', subject_id=data.id) }}"
+                                        style="text-decoration: none; color: inherit; font-weight: 500; border-bottom: 1px dotted var(--text-secondary);">
+                                        {{ sub_name }} ↗
+                                    </a>
+                                    <span>{{ data.percentage }}%</span>
+                                </div>
+                                <div class="progress-bar"
+                                    style="height: 8px; border-radius: 4px; background: #e0e0e0; overflow: hidden;">
+                                    <div class="progress-bar-fill {{ 'bg-error' if data.percentage < 75 else 'bg-success' }}"
+                                        style="--w: {{ data.percentage }}%;"></div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Right Column: Updates -->
+                <div class="dashboard-column">
+
+                    <!-- Recent Updates -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">🔔 Recent Updates</h3>
+                        </div>
+                        {% if recent_updates %}
+                        <div class="update-list" style="display: flex; flex-direction: column; gap: 12px;">
+                            {% for update in recent_updates %}
+                            <div class="update-item"
+                                style="display: flex; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                                <div class="update-icon" style="font-size: 1.2rem;">{{ update.icon }}</div>
+                                <div class="update-content">
+                                    <h5 style="margin: 0 0 4px 0; font-size: 0.95rem;">{{ update.title }}</h5>
+                                    <p style="margin: 0 0 4px 0; font-size: 0.85rem; color: var(--text-secondary);">{{
+                                        update.description }}</p>
+                                    <span class="update-time" style="font-size: 0.75rem; color: var(--text-muted);">{{
+                                        update.time }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No recent updates.</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Upcoming Events -->
+                    <div class="card" style="margin-top: 24px;">
+                        <div class="card-header">
+                            <h3 class="card-title">📅 Upcoming Events</h3>
+                        </div>
+                        {% if upcoming_events %}
+                        <div class="update-list" style="display: flex; flex-direction: column; gap: 12px;">
+                            {% for event in upcoming_events %}
+                            <div class="update-item"
+                                style="display: flex; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                                <div class="update-icon">📅</div>
+                                <div class="update-content">
+                                    <h5 style="margin: 0 0 4px 0; font-size: 0.95rem;">{{ event.title }}</h5>
+                                    <p style="margin: 0 0 4px 0; font-size: 0.85rem; color: var(--text-secondary);">{{
+                                        event.subject }}</p>
+                                    <span class="update-time" style="font-size: 0.75rem; color: var(--text-muted);">Due:
+                                        {{ event.date }}</span>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No upcoming events.</p>
+                        {% endif %}
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

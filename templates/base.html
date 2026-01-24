@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}CampusIQ{% endblock %}</title>
+    <link rel="stylesheet" href="/static/css/main.css?v=3">
+    {% block extra_css %}{% endblock %}
+</head>
+
+<body>
+    {% block content %}{% endblock %}
+
+    <!-- Global Announcements Modal -->
+    <div id="globalAnnouncementsModal" class="announcement-modal" style="display: none;">
+        <div class="announcement-content">
+            <div class="announcement-header">
+                <h3>📢 Announcements</h3>
+                <span class="close-announcement" onclick="toggleAnnouncements()">&times;</span>
+            </div>
+            <div id="announcementList" class="announcement-list">
+                <div style="padding: 1rem; text-align: center; color: var(--text-muted);">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .announcement-modal {
+            position: fixed;
+            top: 60px;
+            right: 20px;
+            width: 350px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            animation: slideIn 0.2s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .announcement-header {
+            padding: 15px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .announcement-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            color: var(--text-primary);
+        }
+
+        .close-announcement {
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: var(--text-muted);
+        }
+
+        .announcement-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .announcement-item {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .announcement-item:last-child {
+            border-bottom: none;
+        }
+
+        .announcement-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .announcement-body {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            line-height: 1.4;
+        }
+
+        .announcement-date {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 8px;
+            display: block;
+        }
+    </style>
+
+    <script>
+        async function toggleAnnouncements() {
+            const modal = document.getElementById('globalAnnouncementsModal');
+            if (modal.style.display === 'none') {
+                modal.style.display = 'block';
+                await fetchAnnouncements();
+            } else {
+                modal.style.display = 'none';
+            }
+        }
+
+        async function fetchAnnouncements() {
+            const list = document.getElementById('announcementList');
+            try {
+                const res = await fetch('/api/announcements/recent');
+                const data = await res.json();
+
+                if (data.announcements && data.announcements.length > 0) {
+                    list.innerHTML = data.announcements.map(a => `
+                        <div class="announcement-item">
+                            <div class="announcement-title">${a.title}</div>
+                            <div class="announcement-body">${a.content}</div>
+                            <span class="announcement-date">${new Date(a.created_at).toLocaleDateString()}</span>
+                        </div>
+                    `).join('');
+                } else {
+                    list.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--text-muted);">No new announcements</div>';
+                }
+            } catch (e) {
+                list.innerHTML = '<div style="padding: 1rem; text-align: center; color: var(--error-color);">Failed to load</div>';
+            }
+        }
+
+        // Close when clicking outside
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('globalAnnouncementsModal');
+            const bell = document.querySelector('.notification-btn'); // Generic class
+            if (modal.style.display === 'block' && !modal.contains(e.target) && (!bell || !bell.contains(e.target))) {
+                modal.style.display = 'none';
+            }
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

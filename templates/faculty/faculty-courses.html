@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div id="app" class="app-shell">
+    {% set active_page = 'courses' %}
+    {% include 'includes/faculty_sidebar.html' %}
+
+    <main class="main">
+        <header class="topbar">
+            <h2 style="font-size: 1.25rem; margin: 0; color: var(--text-primary);">My Courses</h2>
+            <div class="user-area">
+                <button class="notification-btn">🔔</button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div class="page-header">
+                <h1>My Courses</h1>
+                <p class="page-subtitle">Manage your assigned subjects, view stats, and update instructions.</p>
+            </div>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 1.5rem;">
+                {% if courses %}
+                {% for course in courses %}
+                <div class="card" style="padding: 0; border: 1px solid rgba(226, 232, 240, 0.8);">
+                    <div class="card-header"
+                        style="background: #f8fafc; padding: 1.25rem; border-bottom: 1px solid var(--border-color); margin-bottom: 0;">
+                        <div style="width: 100%;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                                <h2 style="font-size: 1.1rem; font-weight: 700; margin: 0; color: var(--text-primary);">
+                                    {{ course.subject_name }}</h2>
+                                <span
+                                    class="badge {% if course.subject_type == 'Lab' %}badge-info{% else %}badge-primary{% endif %}">
+                                    {{ course.subject_type }}
+                                </span>
+                            </div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">
+                                {{ course.subject_code }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="padding: 1.25rem;">
+                        <div style="display: grid; gap: 0.75rem; margin-bottom: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                                <span style="color: var(--text-muted);">Class</span>
+                                <span style="font-weight: 600; color: var(--text-primary);">{{ course.course_name }} •
+                                    {{ course.branch }}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                                <span style="color: var(--text-muted);">Semester</span>
+                                <span style="font-weight: 600; color: var(--text-primary);">Sem {{ course.semester }} •
+                                    {{ course.section }}</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.9rem;">
+                                <span style="color: var(--text-muted);">Year</span>
+                                <span style="font-weight: 600; color: var(--text-primary);">{{ course.academic_year
+                                    }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Instructions Section -->
+                        <div
+                            style="background: #f8fafc; border-radius: 8px; padding: 1rem; border: 1px dashed var(--border-color); margin-bottom: 1.5rem;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                                <h3
+                                    style="font-size: 0.85rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); margin: 0;">
+                                    Instructions</h3>
+                                <button class="btn btn-sm" style="padding: 2px 6px; color: var(--primary-color);"
+                                    onclick="toggleEditInstructions('{{ course.offering_id }}')">✏️ Edit</button>
+                            </div>
+                            <div id="instr-view-{{ course.offering_id }}"
+                                style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.5;">
+                                {{ course.instructions or 'No instructions added yet.' }}
+                            </div>
+                            <div id="instr-edit-{{ course.offering_id }}" style="display: none; margin-top: 0.5rem;">
+                                <textarea id="instr-text-{{ course.offering_id }}" rows="3" class="form-textarea"
+                                    style="font-size: 0.9rem; margin-bottom: 0.5rem;">{{ course.instructions }}</textarea>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button class="btn btn-sm btn-primary"
+                                        onclick="saveInstructions('{{ course.offering_id }}')">Save</button>
+                                    <button class="btn btn-sm btn-outline-secondary"
+                                        onclick="toggleEditInstructions('{{ course.offering_id }}')">Cancel</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display: grid; gap: 0.75rem;">
+                            {% if course.is_active %}
+                            <a href="{{ url_for('faculty.timetable') }}" class="btn btn-sm btn-outline-primary"
+                                style="justify-content: center;">View Timetable</a>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                                <a href="{{ url_for('faculty.attendance') }}?offering_id={{ course.offering_id }}"
+                                    class="btn btn-sm btn-primary" style="justify-content: center;">Attendance</a>
+                                <a href="{{ url_for('faculty.marks') }}?offering_id={{ course.offering_id }}"
+                                    class="btn btn-sm btn-outline-secondary" style="justify-content: center;">Marks</a>
+                            </div>
+                            {% else %}
+                            <button class="btn btn-secondary btn-block" disabled>Semester Inactive</button>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% else %}
+                <div class="card" style="grid-column: 1 / -1; padding: 3rem; text-align: center;">
+                    <p class="text-muted" style="font-size: 1.1rem;">No courses assigned for this semester.</p>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    async function saveInstructions(offeringId) {
+        const text = document.getElementById(`instr-text-${offeringId}`).value;
+        try {
+            const response = await fetch('/faculty/courses/update-instructions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ offering_id: offeringId, instructions: text })
+            });
+            if (response.ok) {
+                document.getElementById(`instr-view-${offeringId}`).innerText = text;
+                toggleEditInstructions(offeringId);
+            } else {
+                alert('Failed to save instructions.');
+            }
+        } catch (err) {
+            console.error(err);
+            alert('Error saving instructions.');
+        }
+    }
+
+    function toggleEditInstructions(offeringId) {
+        const viewMode = document.getElementById(`instr-view-${offeringId}`);
+        const editMode = document.getElementById(`instr-edit-${offeringId}`);
+
+        if (viewMode.style.display === 'none') {
+            viewMode.style.display = 'block';
+            editMode.style.display = 'none';
+        } else {
+            viewMode.style.display = 'none';
+            editMode.style.display = 'block';
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}{{ department.name }} - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'departments' %}
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Department Overview
+        </h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications" onclick="toggleAnnouncements()">🔔
+          <!-- Badge will be injected here via script -->
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+
+      <!-- Hero Section -->
+      <div class="dept-hero"
+        style="background: white; border-radius: 12px; padding: 2rem; margin-bottom: 2rem; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+        <div>
+          <div
+            style="font-size: 0.9rem; font-weight: 600; color: var(--primary-color); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.5rem;">
+            {{ department.code }}</div>
+          <h1 style="margin: 0; font-size: 2rem; color: var(--text-primary);">{{ department.name }}</h1>
+          <p style="margin: 0.5rem 0 0 0; color: var(--text-secondary);">Accountable: <strong>{{
+              department.head_of_department or 'TBD' }}</strong></p>
+        </div>
+        <div style="display: flex; gap: 3rem;">
+          <div style="text-align: center;">
+            <div style="font-size: 2.25rem; font-weight: 700; color: var(--text-primary);">{{ total_students }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Students</div>
+          </div>
+          <div style="text-align: center;">
+            <div style="font-size: 2.25rem; font-weight: 700; color: var(--text-primary);">{{ total_faculty }}</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Faculty</div>
+          </div>
+          <!-- Placeholder for Dept Avg if available -->
+          <div style="text-align: center;">
+            <div style="font-size: 2.25rem; font-weight: 700; color: var(--success-color);">Active</div>
+            <div style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Status</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="tabs-nav"
+        style="display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border-color);">
+        <button class="tab-btn active" onclick="switchTab('faculty')" id="tab-faculty">
+          <span>👨‍🏫</span> Faculty Team
+        </button>
+        <button class="tab-btn" onclick="switchTab('students')" id="tab-students">
+          <span>🎓</span> Student Roster
+        </button>
+      </div>
+
+      <!-- Faculty Section (Grid) -->
+      <div id="view-faculty" class="view-section">
+        {% if faculty %}
+        <div class="faculty-grid"
+          style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1.5rem;">
+          {% for f in faculty %}
+          <div class="card faculty-card" style="padding: 1.5rem; display: flex; gap: 1rem; align-items: start;">
+            <div class="avatar"
+              style="width: 56px; height: 56px; border-radius: 50%; background: #E0E7FF; color: var(--primary-color); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 1.25rem; flex-shrink: 0;">
+              {{ f.name[0]|upper }}
+            </div>
+            <div style="flex-grow: 1;">
+              <h3 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">{{ f.name }}</h3>
+              <div style="font-size: 0.85rem; color: var(--primary-color); font-weight: 500; margin-bottom: 0.25rem;">{{
+                f.designation }}</div>
+              <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">{{ f.email }}</div>
+
+              {% set subjects = faculty_subjects.get(f.id, []) %}
+              <div style="margin-top: 0.5rem;">
+                <span
+                  style="font-size: 0.75rem; font-weight: 600; color: var(--text-secondary); text-transform: uppercase;">Teaching</span>
+                <div style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.25rem;">
+                  {% if subjects %}
+                  {% for sub in subjects[:2] %}
+                  <span class="badge badge-secondary" style="font-size: 0.75rem;">{{ sub }}</span>
+                  {% endfor %}
+                  {% if subjects|length > 2 %}
+                  <span class="badge badge-secondary" style="font-size: 0.75rem;">+{{ subjects|length - 2 }} more</span>
+                  {% endif %}
+                  {% else %}
+                  <span style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">No active
+                    subjects</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if faculty_pagination.pages > 1 %}
+        <div class="pagination-container">
+          {% for page in faculty_pagination.iter_pages() %}
+          {% if page %}
+          <a href="{{ url_for('admin.department_details', department_name=department.name, faculty_page=page, students_page=students_pagination.page) }}#view-faculty"
+            class="page-link {{ 'active' if page == faculty_pagination.page else '' }}">{{ page }}</a>
+          {% else %}
+          <span class="page-dots">...</span>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% else %}
+        <div class="empty-state">
+          <div style="font-size: 3rem;">🕵️‍♂️</div>
+          <h3>No faculty members found</h3>
+          <p>Add faculty to this department to see them here.</p>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Students Section (Enhanced Table) -->
+      <div id="view-students" class="view-section" style="display: none;">
+        <div class="card">
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Student</th>
+                  <th>ID / Section</th>
+                  <th>Status</th>
+                  <th>Attendance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% if students %}
+                {% for s in students %}
+                <tr>
+                  <td>
+                    <div style="font-weight: 600; color: var(--text-primary);">{{ s.name }}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-muted);">{{ s.email }}</div>
+                  </td>
+                  <td>
+                    <div style="font-weight: 500;">{{ s.student_id }}</div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Section {{ s.section or '-' }}</div>
+                  </td>
+                  <td>
+                    <span class="badge {{ 'badge-success' if s.status == 'active' else 'badge-warning' }}">{{
+                      s.status|title }}</span>
+                  </td>
+                  <td style="width: 200px;">
+                    {% set pct = s.attendance_percentage or 0 %}
+                    {% set color = '#10B981' if pct >= 75 else '#EF4444' if pct < 75 else '#F59E0B' %} <div
+                      style="display: flex; align-items: center; gap: 10px;">
+                      <div
+                        style="flex-grow: 1; height: 6px; background: #F3F4F6; border-radius: 3px; overflow: hidden;">
+                        <div
+                          style="height: 100%; border-radius: 3px; --w: {{ pct }}%; --bg: {{ color }}; width: var(--w); background-color: var(--bg);">
+                        </div>
+                      </div>
+                      <span style="font-weight: 600; font-size: 0.85rem; min-width: 35px; text-align: right;">{{ pct
+                        }}%</span>
+          </div>
+          </td>
+          </tr>
+          {% endfor %}
+          {% else %}
+          <tr>
+            <td colspan="4" style="text-align: center; padding: 2rem;">No students enrolled yet.</td>
+          </tr>
+          {% endif %}
+          </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if students_pagination.pages > 1 %}
+        <div class="pagination-container" style="padding: 1rem;">
+          {% for page in students_pagination.iter_pages() %}
+          {% if page %}
+          <a href="{{ url_for('admin.department_details', department_name=department.name, students_page=page, faculty_page=faculty_pagination.page) }}#view-students"
+            class="page-link {{ 'active' if page == students_pagination.page else '' }}">{{ page }}</a>
+          {% else %}
+          <span class="page-dots">...</span>
+          {% endif %}
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+</div>
+
+</section>
+</main>
+</div>
+
+<!-- Simple Tab Script -->
+<script>
+  function switchTab(tabName) {
+    // Toggle Buttons
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tabName).classList.add('active');
+
+    // Toggle Views
+    document.querySelectorAll('.view-section').forEach(v => v.style.display = 'none');
+    document.getElementById('view-' + tabName).style.display = 'block';
+
+    // Persist
+    localStorage.setItem('deptActiveTab', tabName);
+  }
+
+  // Restore state
+  document.addEventListener('DOMContentLoaded', () => {
+    const saved = localStorage.getItem('deptActiveTab') || 'faculty';
+
+    // Hash override
+    if (window.location.hash.includes('students')) switchTab('students');
+    else if (window.location.hash.includes('faculty')) switchTab('faculty');
+    else switchTab(saved);
+
+    // Announcements script will be injected globally if needed, 
+    // or we can invoke it here if defined in base/admin dashboard.
+  });
+
+  function toggleAnnouncements() {
+    // Placeholder for the global implementation
+    alert("Announcements feature coming in next step!");
+  }
+</script>
+
+<style>
+  .tab-btn {
+    background: transparent;
+    border: none;
+    padding: 0.75rem 0;
+    margin-right: 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .tab-btn:hover {
+    color: var(--primary-color);
+  }
+
+  .tab-btn.active {
+    color: var(--primary-color);
+    border-bottom-color: var(--primary-color);
+  }
+
+  .pagination-container {
+    margin-top: 1.5rem;
+    display: flex;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .page-link {
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    text-decoration: none;
+    color: var(--text-secondary);
+    background: white;
+  }
+
+  .page-link.active {
+    background: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    background: white;
+    border-radius: 12px;
+    border: 1px dashed var(--border-color);
+    color: var(--text-muted);
+  }
+</style>
+{% endblock %}

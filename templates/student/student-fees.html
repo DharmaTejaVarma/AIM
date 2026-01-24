@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}My Fees - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+    {% set active_page = 'fees' %}
+    {% include 'includes/student_sidebar.html' %}
+
+    <main class="main">
+        <header class="topbar">
+            <div class="header-title">
+                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">My Fees</h2>
+            </div>
+            <div class="user-area">
+                <button class="notification-btn" aria-label="Notifications">🔔
+                    {% if new_updates_count > 0 %}
+                    <span class="notification-dot"></span>
+                    {% endif %}
+                </button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div id="feesAlert"></div>
+
+            <div class="page-header">
+                <h1>My Fees</h1>
+                <p class="page-subtitle">View your fee details and payment status</p>
+            </div>
+
+            <div class="dashboard-card full-width" style="margin-top: 32px;">
+                <h3>Fee Records</h3>
+
+                <div id="feeStats" class="stats-grid" style="margin-bottom: 20px;">
+                    <!-- Summary stats will go here -->
+                </div>
+
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Semester</th>
+                                <th>Total Fee</th>
+                                <th>Paid Amount</th>
+                                <th>Due Amount</th>
+                                <th>Status</th>
+                                <th>Payment Date</th>
+                            </tr>
+                        </thead>
+                        <tbody id="feesTableBody">
+                            <!-- Populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<!-- Core Scripts -->
+<script src="/static/js/database.js"></script>
+<script src="/static/js/auth.js"></script>
+
+<script>
+    const studentFees = {
+        init() {
+            this.loadFees();
+        },
+
+        async loadFees() {
+            const tableBody = document.getElementById('feesTableBody');
+            const alertBox = document.getElementById('feesAlert');
+            const statsContainer = document.getElementById('feeStats');
+
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading fees...</td></tr>';
+
+            try {
+                const response = await fetch("{{ url_for('student.fetch_fees_data') }}", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                if (!response.ok) throw new Error('Failed to fetch fees data');
+
+                const data = await response.json();
+                this.renderFees(data.fees);
+                this.renderStats(data.summary);
+
+            } catch (error) {
+                console.error('Error:', error);
+                tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Error loading fees: ${error.message}</td></tr>`;
+                alertBox.innerHTML = `<div class="alert alert-danger">${error.message}</div>`;
+            }
+        },
+
+        renderStats(summary) {
+            const container = document.getElementById('feeStats');
+            if (!summary) return;
+
+            container.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Total Due</div>
+                        <div class="stat-value">₹${summary.total_due}</div>
+                    </div>
+                </div>
+                <div class="stat-card success">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-content">
+                        <div class="stat-label">Total Paid</div>
+                        <div class="stat-value">₹${summary.total_paid}</div>
+                    </div>
+                </div>
+            `;
+        },
+
+        renderFees(fees) {
+            const tableBody = document.getElementById('feesTableBody');
+
+            if (!fees || fees.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="6" class="text-center">No fee records found.</td></tr>';
+                return;
+            }
+
+            tableBody.innerHTML = fees.map(fee => {
+                const statusClass = fee.status === 'paid' ? 'bg-success' :
+                    fee.status === 'pending' ? 'bg-danger' : 'bg-warning text-dark';
+
+                return `
+                    <tr>
+                        <td>Semester ${fee.semester}</td>
+                        <td>₹${fee.total_fee}</td>
+                        <td>₹${fee.paid_amount}</td>
+                        <td style="font-weight: bold; color: ${fee.due_amount > 0 ? 'var(--error-color)' : 'var(--success-color)'}">₹${fee.due_amount}</td>
+                        <td><span class="badge ${statusClass}">${fee.status}</span></td>
+                        <td>${fee.payment_date || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        studentFees.init();
+    });
+</script>
+
+
+
+</div>
+{% endblock %}

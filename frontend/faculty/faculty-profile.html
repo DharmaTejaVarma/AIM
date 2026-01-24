@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="faculty-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="faculty-profile.html" class="nav-item active">
+          <span class="nav-icon">👤</span>
+          My Profile
+        </a>
+        <a href="faculty-students.html" class="nav-item">
+          <span class="nav-icon">🎓</span>
+          My Students
+        </a>
+        <a href="faculty-assessments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assessments
+        </a>
+        <a href="faculty-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="faculty-attendance.html" class="nav-item">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="faculty-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="faculty-resources.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👨‍🏫</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Faculty User</div>
+            <div class="user-role" id="current-role">Professor</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search profile..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="window.handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="profileAlert"></div>
+
+        <div class="page-header">
+          <h1><span id="profilePageTitle">My Profile</span></h1>
+          <p class="page-subtitle">Manage your personal and academic information</p>
+        </div>
+
+        <div class="profile-header-card">
+          <div class="profile-avatar" id="profileInitials">FA</div>
+          <div class="profile-info">
+            <h2 id="profileName">Faculty Name</h2>
+            <p id="profileFacultyId" class="profile-id">FAC000</p>
+            <p id="profileDepartment" class="profile-detail">Department</p>
+            <p id="profileDesignation" class="profile-detail">Designation</p>
+            <p class="profile-detail">Status: <span id="profileStatus">Active</span></p>
+          </div>
+        </div>
+
+        <div class="profile-tabs">
+          <button id="showPersonalDetailsBtn" class="tab-btn active" onclick="facultyProfile.showSection('personal')">Personal Details</button>
+          <button id="showAcademicProfessionalDetailsBtn" class="tab-btn" onclick="facultyProfile.showSection('academic-professional')">Academic & Professional</button>
+        </div>
+
+        <!-- Personal Details Section -->
+        <div id="personalDetailsSection" class="dashboard-card full-width">
+          <div class="card-header-with-action">
+            <h3>Personal Information</h3>
+            <button id="toggleEditPersonalBtn" class="btn btn-secondary" onclick="facultyProfile.toggleEditMode()">
+              <span id="toggleEditPersonalIcon">✏️</span> <span id="toggleEditPersonalText">Edit Personal Details</span>
+            </button>
+          </div>
+          <form id="personalDetailsForm">
+            <div class="form-group">
+              <label for="name">Full Name</label>
+              <input type="text" id="name" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone Number</label>
+              <input type="text" id="phone" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="qualification">Qualification</label>
+              <input type="text" id="qualification" class="form-input">
+            </div>
+            <div class="form-group">
+              <label for="experience">Experience (Years)</label>
+              <input type="number" id="experience" class="form-input" min="0">
+            </div>
+            <div class="form-group">
+              <label for="address">Address</label>
+              <textarea id="address" class="form-textarea" rows="3"></textarea>
+            </div>
+            <div id="personalEditActions" class="modal-actions" style="display: none;">
+              <button type="button" class="btn btn-secondary" onclick="facultyProfile.cancelEdit()">Cancel</button>
+              <button type="button" class="btn btn-primary" onclick="facultyProfile.saveProfile()">Save Changes</button>
+            </div>
+          </form>
+
+          <h3 style="margin-top: 40px; border-top: 1px solid var(--border-color); padding-top: 20px;">Change Password</h3>
+          <form id="passwordForm">
+            <div class="form-group">
+              <label for="currentPassword">Current Password</label>
+              <input type="password" id="currentPassword" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label for="newPassword">New Password</label>
+              <input type="password" id="newPassword" class="form-input" required>
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm New Password</label>
+              <input type="password" id="confirmPassword" class="form-input" required>
+            </div>
+            <div class="modal-actions">
+              <button type="submit" class="btn btn-primary">Change Password</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- Academic & Professional Details Section -->
+        <div id="academicProfessionalDetailsSection" class="dashboard-card full-width" style="display: none;">
+          <h3>Academic & Professional Information</h3>
+          <div class="details-grid">
+            <div><strong>Faculty ID:</strong> <span id="academicFacultyId"></span></div>
+            <div><strong>Department:</strong> <span id="academicDepartment"></span></div>
+            <div><strong>Designation:</strong> <span id="academicDesignation"></span></div>
+            <div><strong>Qualification:</strong> <span id="academicQualification"></span></div>
+            <div><strong>Experience:</strong> <span id="academicExperience"></span></div>
+          </div>
+
+          <h4 style="margin-top: 30px; border-top: 1px solid var(--border-color); padding-top: 20px;">Subjects Taught</h4>
+          <ul id="subjectsTaughtList" class="list-unstyled">
+            <!-- Subjects populated by JS -->
+          </ul>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/faculty-profile.js"></script>
+
+  <style>
+    .profile-header-card {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: white;
+      padding: 35px;
+      border-radius: 20px;
+      margin-bottom: 40px;
+      box-shadow: 0 10px 25px rgba(var(--primary-color-rgb), 0.3);
+    }
+
+    .profile-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      font-weight: 700;
+      border: 3px solid rgba(255,255,255,0.5);
+    }
+
+    .profile-info h2 {
+      margin: 0 0 8px 0;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .profile-info p {
+      margin: 0 0 5px 0;
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .profile-info .profile-id {
+      font-weight: 600;
+    }
+
+    .profile-info .profile-detail {
+      font-size: 14px;
+    }
+
+    .profile-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 32px;
+      border-bottom: 2px solid var(--border-color);
+      background-color: var(--surface-color);
+      border-radius: 16px 16px 0 0;
+      padding: 8px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    }
+
+    .profile-tabs .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-color);
+      opacity: 0.7;
+      padding: 16px 32px;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .profile-tabs .tab-btn:hover {
+      opacity: 1;
+      background-color: var(--surface-color);
+      color: var(--primary-color);
+    }
+
+    .profile-tabs .tab-btn.active {
+      opacity: 1;
+      color: white;
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      box-shadow: 0 2px 8px rgba(var(--primary-color-rgb), 0.2);
+    }
+
+    .card-header-with-action {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .card-header-with-action h3 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-color);
+    }
+
+    .card-header-with-action .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--text-color);
+      font-size: 15px;
+    }
+
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      background-color: var(--background-color);
+      color: var(--text-color);
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(var(--primary-color-rgb), 0.15);
+      outline: none;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+    }
+
+    .modal-actions .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+      font-size: 15px;
+      color: var(--muted-text-color);
+    }
+
+    .details-grid strong {
+      color: var(--text-color);
+    }
+
+    .list-unstyled {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .list-unstyled li {
+      background-color: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 18px;
+      margin-bottom: 10px;
+      font-size: 15px;
+      color: var(--text-color);
+      font-weight: 500;
+    }
+  </style>
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Announcements - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="./admin-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="./admin-students.html" class="nav-item">
+          <span class="nav-icon">🎓</span>
+          Students
+        </a>
+        <a href="./admin-faculty.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          Faculty
+        </a>
+        <a href="./admin-departments.html" class="nav-item">
+          <span class="nav-icon">🏢</span>
+          Departments
+        </a>
+        <a href="./admin-subjects.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Subjects
+        </a>
+        <a href="./admin-subject-allocation.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Subject Allocation
+        </a>
+        <a href="./admin-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="./admin-external-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          External Marks
+        </a>
+        <a href="./admin-fees.html" class="nav-item">
+          <span class="nav-icon">💰</span>
+          Fees
+        </a>
+        <a href="./admin-announcements.html" class="nav-item active">
+          <span class="nav-icon">📢</span>
+          Announcements
+        </a>
+        <a href="./admin-analytics.html" class="nav-item">
+          <span class="nav-icon">📈</span>
+          Analytics
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👤</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Admin User</div>
+            <div class="user-role" id="current-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search announcements..."/>
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="announcementsAlert"></div>
+
+        <div class="page-header">
+          <h1>Announcements Management</h1>
+          <p class="page-subtitle">Create, manage, and publish campus-wide announcements</p>
+        </div>
+
+        <div class="action-bar">
+          <div class="left-actions">
+            <button class="btn btn-primary" onclick="showCreateAnnouncementModal()">
+              <span class="action-icon">➕</span> Create New Announcement
+            </button>
+          </div>
+          <div class="filter-group">
+            <input type="text" id="searchInput" class="form-input" placeholder="Search by title or content">
+            <select id="audienceFilter" class="form-select">
+              <option value="">All Audiences</option>
+              <option value="all">All Users</option>
+              <option value="student">Students</option>
+              <option value="faculty">Faculty</option>
+              <option value="admin">Admin</option>
+            </select>
+            <select id="statusFilter" class="form-select">
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="scheduled">Scheduled</option>
+              <option value="expired">Expired</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">📢</div>
+            <div class="stat-content">
+              <div class="stat-label">Total Announcements</div>
+              <div class="stat-value" id="totalAnnouncements">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🟢</div>
+            <div class="stat-content">
+              <div class="stat-label">Active</div>
+              <div class="stat-value" id="activeAnnouncements">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📝</div>
+            <div class="stat-content">
+              <div class="stat-label">Drafts</div>
+              <div class="stat-value" id="draftAnnouncements">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🗓️</div>
+            <div class="stat-content">
+              <div class="stat-label">Scheduled</div>
+              <div class="stat-value" id="scheduledAnnouncements">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 2rem;">
+          <h3>All Announcements <span class="badge badge-info" id="filteredAnnouncementsCount">-- announcements</span></h3>
+          <div id="announcementsList" class="announcements-list">
+            <!-- Announcements populated by JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="announcementModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="hideAnnouncementModal()">×</span>
+      <h2 id="announcementModalTitle">Create Announcement</h2>
+      <form id="announcementForm">
+        <input type="hidden" id="announcementId">
+        <div class="form-group">
+          <label for="announcementTitle">Title</label>
+          <input type="text" id="announcementTitle" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="announcementContent">Content</label>
+          <textarea id="announcementContent" class="form-textarea" rows="5" required></textarea>
+        </div>
+        <div class="form-group">
+          <label for="announcementAudience">Target Audience</label>
+          <select id="announcementAudience" class="form-select" required>
+            <option value="all">All Users</option>
+            <option value="student">Students</option>
+            <option value="faculty">Faculty</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="announcementPriority">Priority</label>
+          <select id="announcementPriority" class="form-select">
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="announcementExpiry">Expiry Date (Optional)</label>
+          <input type="date" id="announcementExpiry" class="form-input">
+        </div>
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="sendEmail">
+          <label for="sendEmail">Send Email Notification</label>
+        </div>
+        <div class="form-group checkbox-group">
+          <input type="checkbox" id="pinAnnouncement">
+          <label for="pinAnnouncement">Pin Announcement</label>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
+          <button type="submit" class="btn btn-primary">Publish</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="previewModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="hidePreviewModal()">×</span>
+      <h2>Announcement Preview</h2>
+      <div id="previewContent" class="dashboard-card">
+        <!-- Preview content loaded by JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/admin-announcements.js"></script>
+</body>
+</html>

@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="viewProfilePageTitle">Student Profile - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="faculty-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="faculty-profile.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          My Profile
+        </a>
+        <a href="faculty-students.html" class="nav-item active">
+          <span class="nav-icon">🎓</span>
+          My Students
+        </a>
+        <a href="faculty-assessments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assessments
+        </a>
+        <a href="faculty-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="faculty-attendance.html" class="nav-item">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="faculty-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="faculty-resources.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👨‍🏫</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Faculty User</div>
+            <div class="user-role" id="current-role">Professor</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search profile..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="profileAlert"></div>
+
+        <div class="page-header">
+          <h1><span id="profilePageTitle">Student Profile</span></h1>
+          <p class="page-subtitle">Detailed information for this student</p>
+        </div>
+
+        <div class="profile-header-card">
+          <div class="profile-avatar" id="profileInitials">ST</div>
+          <div class="profile-info">
+            <h2 id="profileName">Student Name</h2>
+            <p id="profileStudentId" class="profile-id">STU000</p>
+            <p id="profileBranch" class="profile-detail">Branch</p>
+            <p id="profileSection" class="profile-detail">Section</p>
+            <p class="profile-detail">Status: <span id="profileStatus">Active</span></p>
+          </div>
+        </div>
+
+        <div class="profile-tabs">
+          <button id="showPersonalDetailsBtn" class="tab-btn active" onclick="viewStudentProfile.showSection('personal')">Personal Details</button>
+          <button id="showAcademicDetailsBtn" class="tab-btn" onclick="viewStudentProfile.showSection('academic')">Academic Information</button>
+        </div>
+
+        <!-- Personal Details Section -->
+        <div id="personalDetailsSection" class="dashboard-card full-width">
+          <div class="card-header-with-action">
+            <h3>Personal Information</h3>
+          </div>
+          <form id="personalDetailsForm">
+            <div class="form-group">
+              <label for="name">Full Name</label>
+              <input type="text" id="name" class="form-input" readonly>
+            </div>
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" class="form-input" readonly>
+            </div>
+            <div class="form-group">
+              <label for="phone">Phone Number</label>
+              <input type="text" id="phone" class="form-input" readonly>
+            </div>
+            <div class="form-group">
+              <label for="dateOfBirth">Date of Birth</label>
+              <input type="date" id="dateOfBirth" class="form-input" readonly>
+            </div>
+            <div class="form-group">
+              <label for="address">Address</label>
+              <textarea id="address" class="form-textarea" rows="3" readonly></textarea>
+            </div>
+            <div class="form-group">
+              <label for="fatherName">Father's Name</label>
+              <input type="text" id="fatherName" class="form-input" readonly>
+            </div>
+            <div class="form-group">
+              <label for="motherName">Mother's Name</label>
+              <input type="text" id="motherName" class="form-input" readonly>
+            </div>
+            <div class="form-group">
+              <label for="parentsPhone">Parents' Phone</label>
+              <input type="text" id="parentsPhone" class="form-input" readonly>
+            </div>
+          </form>
+        </div>
+
+        <!-- Academic Information Section -->
+        <div id="academicDetailsSection" class="dashboard-card full-width" style="display: none;">
+          <h3>Academic Information</h3>
+          <div class="details-grid">
+            <div><strong>Student ID:</strong> <span id="academicStudentId"></span></div>
+            <div><strong>Branch:</strong> <span id="academicBranch"></span></div>
+            <!-- Removed Year -->
+            <!-- Removed Semester -->
+            <div><strong>Section:</strong> <span id="academicSection"></span></div>
+          </div>
+
+          <div class="stats-grid" style="margin-top: 30px;">
+            <div class="stat-card">
+              <div class="stat-icon">📊</div>
+              <div class="stat-content">
+                <div class="stat-label">Current CGPA</div>
+                <div class="stat-value" id="currentCGPA">--</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">🏆</div>
+              <div class="stat-content">
+                <div class="stat-label">Credits Earned</div>
+                <div class="stat-value" id="creditsEarned">--</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">✅</div>
+              <div class="stat-content">
+                <div class="stat-label">Overall Attendance</div>
+                <div class="stat-value" id="overallAttendance">--</div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-icon">📚</div>
+              <div class="stat-content">
+                <div class="stat-label">Backlog Subjects</div>
+                <div class="stat-value" id="backlogSubjects">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-card full-width" style="margin-top: 32px;">
+            <h3>Subject-wise Marks Summary</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Code</th>
+                    <th>Internal (Obt/Max)</th>
+                    <th>External (Obt/Max)</th>
+                    <th>Total (Obt/Max)</th>
+                    <th>Percentage</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="subjectMarksSummaryBody">
+                  <!-- Subject-wise marks populated by JS -->
+                </tbody>
+            </table>
+          </div>
+        </div>
+
+          <div class="dashboard-card full-width" style="margin-top: 32px;">
+            <h3>Subject-wise Attendance Summary</h3>
+            <div class="table-container">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>Subject</th>
+                    <th>Code</th>
+                    <th>Total Classes</th>
+                    <th>Present</th>
+                    <th>Absent</th>
+                    <th>Percentage</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="subjectAttendanceSummaryBody">
+                  <!-- Subject-wise attendance populated by JS -->
+                </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/marks-calculator.js"></script>
+  <script src="../js/view-student-profile.js"></script>
+
+  <style>
+    .profile-header-card {
+      display: flex;
+      align-items: center;
+      gap: 25px;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      color: white;
+      padding: 35px;
+      border-radius: 20px;
+      margin-bottom: 40px;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .profile-avatar {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      font-weight: 700;
+      border: 3px solid rgba(255,255,255,0.5);
+    }
+
+    .profile-info h2 {
+      margin: 0 0 8px 0;
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+
+    .profile-info p {
+      margin: 0 0 5px 0;
+      font-size: 16px;
+      opacity: 0.9;
+    }
+
+    .profile-info .profile-id {
+      font-weight: 600;
+    }
+
+    .profile-info .profile-detail {
+      font-size: 14px;
+    }
+
+    .profile-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 32px;
+      border-bottom: 2px solid var(--border-color);
+      background: var(--bg-secondary);
+      border-radius: 16px 16px 0 0;
+      padding: 8px;
+    }
+
+    .profile-tabs .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-secondary);
+      padding: 16px 32px;
+      cursor: pointer;
+      border-radius: 12px;
+      transition: all 0.2s ease;
+      font-weight: 600;
+      font-size: 15px;
+    }
+
+    .profile-tabs .tab-btn:hover {
+      color: var(--text-primary);
+      background: var(--bg-primary);
+    }
+
+    .profile-tabs .tab-btn.active {
+      color: white;
+      background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+      box-shadow: var(--shadow);
+    }
+
+    .card-header-with-action {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .card-header-with-action h3 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .card-header-with-action .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 15px;
+    }
+
+    .form-input, .form-textarea {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--bg-secondary);
+      color: var(--text-primary);
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus, .form-textarea:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      outline: none;
+    }
+
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal-actions .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-weight: 600;
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-top: 20px;
+      font-size: 15px;
+      color: var(--text-secondary);
+    }
+
+    .details-grid strong {
+      color: var(--text-primary);
+    }
+
+    .list-unstyled {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .list-unstyled li {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 12px 18px;
+      margin-bottom: 10px;
+      font-size: 15px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+  </style>
+</body>
+</html>

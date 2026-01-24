@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block title %}Student Assignments - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'assignments' %}
+  {% include 'includes/student_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">My Assignments</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div id="assignmentsAlert"></div>
+
+      <div class="page-header">
+        <h1>My Assignments</h1>
+        <p class="page-subtitle">View and track your assignments</p>
+      </div>
+
+      <div class="filters-card">
+        <div class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Title</label>
+            <input type="text" id="searchInput" class="form-input" placeholder="Search assignments...">
+          </div>
+          <div class="filter-group">
+            <label>Subject</label>
+            <select id="subjectFilter" class="form-select">
+              <option value="">All My Subjects</option>
+              <!-- Options populated by JS -->
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Status</label>
+            <select id="statusFilter" class="form-select">
+              <option value="">All Statuses</option>
+              <option value="upcoming">Upcoming</option>
+              <option value="active">Active</option>
+              <option value="overdue">Overdue</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-card full-width" style="margin-top: 32px;">
+        <h3>All Assignments <span class="badge badge-info" id="totalAssignmentsCount">-- assignments</span></h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Subject</th>
+                <th>Due Date</th>
+                <th>Max Marks</th>
+                <th>Uploaded By</th>
+                <th>Uploaded On</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="assignmentsTableBody">
+              <!-- Assignments data populated by JS -->
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination" id="pagination">
+          <!-- Pagination buttons populated by JS -->
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Modal -->
+  <div id="notificationModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="toggleNotificationModal()">×</span>
+      <h2>Notifications History</h2>
+      <div class="notification-list" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+        {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement-item" style="padding: 15px 0; border-bottom: 1px solid var(--border-color);">
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px; color: var(--text-primary);">{{
+            ann.title }}</div>
+          <p class="text-muted" style="margin: 0 0 4px; font-size: 0.9rem;">{{ ann.content }}</p>
+          <div class="text-muted small" style="font-size: 0.8rem;">{{ ann.date }} • <span class="badge badge-info">{{
+              ann.priority|capitalize }}</span></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center">No notifications found.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleNotificationModal() {
+      const modal = document.getElementById('notificationModal');
+      if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+      } else {
+        modal.style.display = 'block';
+      }
+    }
+
+    // Bind bell click
+    const notificationBtn = document.querySelector('.notification-btn');
+    if (notificationBtn) {
+      notificationBtn.onclick = toggleNotificationModal;
+    }
+
+    // Close on outside click
+    window.onclick = function (event) {
+      const modal = document.getElementById('notificationModal');
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+    }
+  </script>
+</div>
+
+<!-- Core Scripts -->
+
+<script>
+  const studentAssignments = {
+    assignments: [],
+    itemsPerPage: 5,
+    currentPage: 1,
+
+    init() {
+      this.loadAssignments();
+
+      // Event Listeners
+      document.getElementById('searchInput').addEventListener('input', () => this.filterAssignments());
+      document.getElementById('subjectFilter').addEventListener('change', () => this.filterAssignments());
+      document.getElementById('statusFilter').addEventListener('change', () => this.filterAssignments());
+    },
+
+    async loadAssignments() {
+      try {
+        const response = await fetch("{{ url_for('student.fetch_assignments_data') }}", {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch assignments');
+
+        const data = await response.json();
+        this.assignments = data.assignments;
+
+        this.populateSubjectFilter(data.subjects);
+        this.filterAssignments();
+
+      } catch (error) {
+        console.error(error);
+        document.getElementById('assignmentsAlert').innerHTML =
+          `<div class="alert alert-danger">${error.message}</div>`;
+      }
+    },
+
+    populateSubjectFilter(subjects) {
+      const select = document.getElementById('subjectFilter');
+      subjects.forEach(sub => {
+        const option = document.createElement('option');
+        option.value = sub.name;
+        option.textContent = sub.name;
+        select.appendChild(option);
+      });
+    },
+
+    filterAssignments() {
+      const search = document.getElementById('searchInput').value.toLowerCase();
+      const subject = document.getElementById('subjectFilter').value;
+      const status = document.getElementById('statusFilter').value;
+
+      const filtered = this.assignments.filter(a => {
+        const matchesSearch = a.title.toLowerCase().includes(search) || a.subject.toLowerCase().includes(search);
+        const matchesSubject = subject ? a.subject === subject : true;
+        const matchesStatus = status ? a.status === status : true;
+        return matchesSearch && matchesSubject && matchesStatus;
+      });
+
+      this.renderTable(filtered);
+      document.getElementById('totalAssignmentsCount').textContent = `${filtered.length} assignments`;
+    },
+
+    renderTable(assignments) {
+      const body = document.getElementById('assignmentsTableBody');
+
+      if (assignments.length === 0) {
+        body.innerHTML = '<tr><td colspan="7" class="text-center">No assignments found</td></tr>';
+        document.getElementById('pagination').innerHTML = '';
+        return;
+      }
+
+      // Pagination
+      const totalPages = Math.ceil(assignments.length / this.itemsPerPage);
+      if (this.currentPage > totalPages) this.currentPage = 1;
+
+      const start = (this.currentPage - 1) * this.itemsPerPage;
+      const end = start + this.itemsPerPage;
+      const pageItems = assignments.slice(start, end);
+
+      body.innerHTML = pageItems.map(a => {
+        let statusBadge = '';
+        if (a.status === 'active') statusBadge = '<span class="badge badge-success">Active</span>';
+        else if (a.status === 'upcoming') statusBadge = '<span class="badge badge-info">Upcoming</span>';
+        else statusBadge = '<span class="badge badge-danger">Overdue</span>';
+
+        return `
+                    <tr>
+                        <td>
+                            <div style="font-weight: 600;">${a.title}</div>
+                            <div class="small text-muted">${statusBadge}</div>
+                        </td>
+                        <td>${a.subject}</td>
+                        <td>${a.due_date}</td>
+                        <td>${a.max_marks}</td>
+                        <td>${a.uploaded_by}</td>
+                        <td>${a.uploaded_on}</td>
+                        <td>
+                            <a href="{{ url_for('student.assignment_details') }}?id=${a.id}" class="btn btn-sm btn-primary">Details</a>
+                        </td>
+                    </tr>
+                 `;
+      }).join('');
+
+      this.renderPagination(totalPages);
+    },
+
+    renderPagination(totalPages) {
+      const container = document.getElementById('pagination');
+      let html = '';
+
+      if (totalPages > 1) {
+        html += `<button class="btn btn-sm btn-secondary" onclick="studentAssignments.changePage(-1)" ${this.currentPage === 1 ? 'disabled' : ''}>Prev</button>`;
+        for (let i = 1; i <= totalPages; i++) {
+          html += `<button class="btn btn-sm ${this.currentPage === i ? 'btn-primary' : 'btn-secondary'}" onclick="studentAssignments.setPage(${i})">${i}</button>`;
+        }
+        html += `<button class="btn btn-sm btn-secondary" onclick="studentAssignments.changePage(1)" ${this.currentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+      }
+      container.innerHTML = html;
+    },
+
+    changePage(offset) {
+      this.currentPage += offset;
+      this.filterAssignments();
+    },
+
+    setPage(page) {
+      this.currentPage = page;
+      this.filterAssignments();
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    studentAssignments.init();
+  });
+</script>
+
+
+
+</div>
+{% endblock %}

@@ -1,0 +1,102 @@
+{
+    "years": [
+        {
+            "name": "2025-2026",
+            "start_date": "2025-11-30",
+            "end_date": "2026-04-30",
+            "is_active": true,
+            "is_current": true,
+            "id": "d9714cd6-9cd5-4e4e-b480-b6af8a0f3018",
+            "created_at": "2026-01-05T19:24:28.041322"
+        }
+    ],
+    "semesters": [],
+    "rules": {
+        "max_periods": 8,
+        "min_attendance": 75.0
+    },
+    "holidays": [],
+    "courses": [
+        {
+            "name": "2022-2026",
+            "code": "B.TECH",
+            "duration_years": 4,
+            "total_semesters": 8,
+            "status": "Active",
+            "id": "5342c4a8-4cda-4c22-92b5-b4356926109c"
+        }
+    ],
+    "branches": [
+        {
+            "id": "413db409-e227-4e09-bc60-fc0ba9c37e61",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Computer Science & Engineering",
+            "code": "CSE",
+            "status": "Active"
+        },
+        {
+            "id": "76c16152-3ebd-42e6-b044-4e4777d147db",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Mechanical Engineering",
+            "code": "ME",
+            "status": "Active"
+        },
+        {
+            "id": "cad3486e-d7b7-481e-b197-2f29a2df4751",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Civil Engineering",
+            "code": "CE",
+            "status": "Active"
+        },
+        {
+            "name": "Artificial Intelligence & Data Science",
+            "code": "AI&DS",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "department_id": null,
+            "status": "Active",
+            "id": "90f6feeb-9c20-4abd-86e9-f66205506946"
+        },
+        {
+            "id": "36f0df87-2505-48de-8a4a-136065501b64",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Information Technology",
+            "code": "IT",
+            "status": "Active"
+        },
+        {
+            "id": "562995da-4d4f-4813-adcf-9b59a6958bc0",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Electrical & Electronics Engineering",
+            "code": "EEE",
+            "status": "Active"
+        },
+        {
+            "id": "db084a9c-fb62-465c-a3c6-27e5c8c732a0",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Computer Science & Engineering (Data Science)",
+            "code": "CSEDS",
+            "status": "Active"
+        },
+        {
+            "id": "297b07b0-be6d-4254-a2ef-7c1070764bc9",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Artificial Intelligence & Machine Learning",
+            "code": "AIML",
+            "status": "Active"
+        },
+        {
+            "id": "b3af0110-0d90-451b-ba0e-c31076d2a1a0",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Computer Science & Engineering (Artificial Intelligence)",
+            "code": "CSEAI",
+            "status": "Active"
+        },
+        {
+            "id": "7be65114-1691-4921-a71f-1b793d29136c",
+            "course_id": "5342c4a8-4cda-4c22-92b5-b4356926109c",
+            "name": "Artificial Intelligence & Data Science",
+            "code": "AIDS",
+            "status": "Active"
+        }
+    ]
+}

@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+
+{% block title %}Student Profile | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="brand">CampusIQ</div>
+    <nav>
+      <a href="{{ url_for('faculty.dashboard') }}" class="nav-item">
+        <span class="nav-icon">🏠</span> Home
+      </a>
+      <a href="{{ url_for('faculty.profile') }}" class="nav-item">
+        <span class="nav-icon">👨‍🏫</span> My Profile
+      </a>
+      <a href="{{ url_for('faculty.my_students') }}" class="nav-item active">
+        <span class="nav-icon">🎓</span> My Students
+      </a>
+      <a href="{{ url_for('faculty.courses') }}" class="nav-item">
+        <span class="nav-icon">📚</span> My Courses
+      </a>
+      <a href="{{ url_for('faculty.mentees') }}" class="nav-item">
+        <span class="nav-icon">🤝</span> My Mentees
+      </a>
+      <a href="{{ url_for('faculty.assessments') }}" class="nav-item">
+        <span class="nav-icon">📝</span> Assessments
+      </a>
+      <a href="{{ url_for('faculty.marks') }}" class="nav-item">
+        <span class="nav-icon">💯</span> Marks
+      </a>
+      <a href="{{ url_for('faculty.attendance') }}" class="nav-item">
+        <span class="nav-icon">✅</span> Attendance
+      </a>
+      <a href="{{ url_for('faculty.timetable') }}" class="nav-item">
+        <span class="nav-icon">🗓️</span> Timetable
+      </a>
+      <a href="{{ url_for('faculty.resources') }}" class="nav-item">
+        <span class="nav-icon">📂</span> Resources
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="avatar">👨‍🏫</div>
+        <div class="user-info">
+          <div class="user-name">{{ user.name }}</div>
+          <div class="user-role">{{ user.role|capitalize }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main">
+    <header class="topbar">
+      <div class="breadcrumbs">
+        <a href="{{ url_for('faculty.dashboard') }}" class="text-muted">Home</a>
+        <span class="separator">/</span>
+        <a href="{{ url_for('faculty.my_students') }}" class="text-muted">My Students</a>
+        <span class="separator">/</span>
+        <span class="current">Profile</span>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-badge"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div class="page-header">
+        <div>
+          <h1>Student Profile</h1>
+        </div>
+        <div class="action-bar">
+          <a href="{{ url_for('faculty.my_students') }}" class="btn btn-secondary">
+            <span class="action-icon">⬅️</span> Back to List
+          </a>
+        </div>
+      </div>
+
+      <div class="profile-layout">
+        <!-- Sticky Profile Sidebar -->
+        <div class="profile-sidebar">
+          <div class="card text-center" style="position: sticky; top: 1.5rem; padding: 2.5rem 1.5rem;">
+            <div class="profile-avatar-large">
+              {{ student.name[0] }}
+            </div>
+            <h3 class="mt-3" style="font-size: 1.5rem;">{{ student.name }}</h3>
+            <p class="text-muted mb-2 font-mono">{{ student.student_id }}</p>
+            <div class="badge badge-success mb-4">Active Student</div>
+
+            <div class="profile-nav mt-4">
+              <button class="profile-nav-item active" onclick="showSection('academic')">
+                <span class="nav-icon">🎓</span> Academic Details
+              </button>
+              <button class="profile-nav-item" onclick="showSection('contact')">
+                <span class="nav-icon">📞</span> Personal & Contact
+              </button>
+              <button class="profile-nav-item" onclick="showSection('attendance')">
+                <span class="nav-icon">📅</span> Attendance Record
+              </button>
+              <button class="profile-nav-item" onclick="showSection('marks')">
+                <span class="nav-icon">📊</span> Examination Marks
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scrollable Details Area -->
+        <div class="profile-content">
+
+          <!-- Academic Section -->
+          <div id="academic" class="profile-section active">
+            <div class="card">
+              <div class="card-header border-bottom mb-4">
+                <h3 class="card-title">Academic Information</h3>
+              </div>
+              <div class="detail-card-grid">
+                <div class="info-card">
+                  <div class="info-label">Branch</div>
+                  <div class="info-value">{{ student.branch }}</div>
+                  <div class="text-muted small">Department</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-label">Current Year</div>
+                  <div class="info-value">Year {{ student.year }}</div>
+                  <div class="text-muted small">Semester {{ student.semester }}</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-label">Section</div>
+                  <div class="info-value">Section {{ student.section }}</div>
+                  <div class="text-muted small">Class Group</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-label">Date of Birth</div>
+                  <div class="info-value">{{ student.date_of_birth }}</div>
+                  <div class="text-muted small">Personal</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Section -->
+          <div id="contact" class="profile-section" style="display: none;">
+            <div class="card mb-4">
+              <div class="card-header border-bottom mb-4">
+                <h3 class="card-title">Contact & Personal</h3>
+              </div>
+              <div class="detail-card-grid">
+                <div class="info-card">
+                  <div class="info-label">Email Address</div>
+                  <div class="info-value" style="font-size: 1rem; word-break: break-all;">{{ student.email }}</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-label">Phone Number</div>
+                  <div class="info-value">{{ student.phone }}</div>
+                </div>
+                <div class="info-card" style="grid-column: 1 / -1;">
+                  <div class="info-label">Residential Address</div>
+                  <div class="info-value">{{ student.address }}</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header border-bottom mb-4">
+                <h3 class="card-title">Guardian Details</h3>
+              </div>
+              <div class="detail-card-grid">
+                <div class="info-card">
+                  <div class="info-label">Father's Name</div>
+                  <div class="info-value">{{ student.father_name }}</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-label">Mother's Name</div>
+                  <div class="info-value">{{ student.mother_name }}</div>
+                </div>
+                <div class="info-card">
+                  <div class="info-label">Parent's Phone</div>
+                  <div class="info-value">{{ student.parents_phone }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Attendance Section -->
+          <div id="attendance" class="profile-section" style="display: none;">
+            <!-- Stats -->
+            <div class="stats-grid mb-4" style="grid-template-columns: repeat(3, 1fr);">
+              <div class="stat-card stat-card--blue">
+                <div class="stat-header">
+                  <div class="stat-label">Total Classes</div>
+                </div>
+                <div class="stat-value">{{ attendance_stats.total }}</div>
+              </div>
+              <div class="stat-card stat-card--green">
+                <div class="stat-header">
+                  <div class="stat-label">Present</div>
+                </div>
+                <div class="stat-value">{{ attendance_stats.present }}</div>
+              </div>
+              <div
+                class="stat-card {{ 'stat-card--green' if attendance_stats.percentage|float >= 75 else 'stat-card--red' }}">
+                <div class="stat-header">
+                  <div class="stat-label">Attendance Rate</div>
+                </div>
+                <div class="stat-value">{{ attendance_stats.percentage }}%</div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header border-bottom">
+                <h3 class="card-title">Subject-wise Attendance Breakdown</h3>
+              </div>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Subject</th>
+                      <th class="text-center">Total</th>
+                      <th class="text-center">Present</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for subject in detailed_attendance %}
+                    <tr>
+                      <td class="font-weight-bold">{{ subject.subject_name }}</td>
+                      <td class="text-center">{{ subject.total }}</td>
+                      <td class="text-center">{{ subject.present }}</td>
+                      <td>
+                        <div style="display: flex; align-items: center; gap: 10px; max-width: 200px;">
+                          <div class="progress-bar-container" style="flex:1;">
+                            <div
+                              class="progress-bar-fill {{ 'bg-success' if subject.percentage >= 75 else 'bg-danger' }}"
+                              style="width: {{ subject.percentage }}%;"></div>
+                          </div>
+                          <span
+                            class="font-weight-bold {{ 'text-success' if subject.percentage >= 75 else 'text-danger' }}">{{
+                            subject.percentage }}%</span>
+                        </div>
+                      </td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Marks Section -->
+          <div id="marks" class="profile-section" style="display: none;">
+            <div class="card">
+              <div class="card-header border-bottom mb-3 d-flex justify-content-between align-items-center">
+                <h3 class="card-title">Semester Marks</h3>
+                <div class="text-muted small">Select a semester to view results</div>
+              </div>
+
+              <div class="tabs-segment-container mb-4">
+                {% for sem in range(1, 9) %}
+                <button class="tab-segment-item {% if sem == student.semester %}active{% endif %}" data-sem="{{ sem }}"
+                  onclick="showSemester(this.dataset.sem)">Semester {{ sem }}</button>
+                {% endfor %}
+              </div>
+
+              {% for sem, subjects in semester_data.items() %}
+              <div id="sem-{{ sem }}" class="semester-content {% if sem == student.semester %}active{% endif %}" {% if
+                sem !=student.semester %}style="display:none;" {% endif %}>
+                {% if subjects %}
+                <div class="table-container">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>Subject</th>
+                        <th class="text-center">Credits</th>
+                        <th class="text-center">Internal (Max)</th>
+                        <th class="text-center">External</th>
+                        <th class="text-center">Total</th>
+                        <th class="text-center">Result</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for sub in subjects %}
+                      <tr>
+                        <td>
+                          <div class="font-weight-bold">{{ sub.name }}</div>
+                          <div class="text-muted small">{{ sub.code }}</div>
+                        </td>
+                        <td class="text-center">{{ sub.credits }}</td>
+                        <td class="text-center">
+                          {% if sub.internal.allInternalMarksEntered %}
+                          <span class="font-weight-bold">{{ sub.internal.totalInternal }}</span>
+                          <span class="text-muted small">/ {{ sub.internal.maxInternal }}</span>
+                          {% else %}
+                          <span class="badge badge-warning">Pending</span>
+                          {% endif %}
+                        </td>
+                        <td class="text-center">
+                          {% if sub.external is not none %}
+                          {{ sub.external }}
+                          {% else %}
+                          <span class="text-muted">-</span>
+                          {% endif %}
+                        </td>
+                        <td class="text-center">
+                          {% if sub.total is not none %}
+                          <strong style="font-size: 1.1rem;">{{ sub.total }}</strong>
+                          {% else %}
+                          <span class="text-muted">-</span>
+                          {% endif %}
+                        </td>
+                        <td class="text-center">
+                          {% if sub.status == 'Pass' %}
+                          <span class="badge badge-success">PASS</span>
+                          {% elif sub.status == 'Fail' %}
+                          <span class="badge badge-danger">FAIL</span>
+                          {% else %}
+                          <span class="badge badge-secondary">PENDING</span>
+                          {% endif %}
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                  <div style="font-size: 3rem; opacity: 0.2;">📚</div>
+                  <p class="text-muted mt-2">No subjects or marks data found for Semester {{ sem }}.</p>
+                </div>
+                {% endif %}
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Modal -->
+  <div id="notificationModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="toggleNotificationModal()">×</span>
+      <h2>Notifications</h2>
+      <div class="notification-list">
+        {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement-item">
+          <div class="title">{{ ann.title }}</div>
+          <p class="content">{{ ann.content }}</p>
+          <div class="meta">{{ ann.date }} • <span class="badge badge-info">{{ ann.priority|capitalize }}</span></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center p-3">No notifications.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Notification Logic
+  function toggleNotificationModal() {
+    const modal = document.getElementById('notificationModal');
+    modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+  }
+  window.onclick = function (event) {
+    const modal = document.getElementById('notificationModal');
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  }
+
+  // Profile Navigation Logic
+  function showSection(sectionId) {
+    // Hide all sections
+    document.querySelectorAll('.profile-section').forEach(el => el.style.display = 'none');
+    // Show selected section
+    document.getElementById(sectionId).style.display = 'block';
+
+    // Update nav active state
+    document.querySelectorAll('.profile-nav-item').forEach(el => el.classList.remove('active'));
+    // Find button that called this
+    const btns = document.querySelectorAll('.profile-nav-item');
+    // Simple state update - assuming event.target logic, or matching onclick
+    // More robust to pass 'this' or use simple class matching
+
+    // We can rely on the onclick adding active to event.currentTarget if passed
+    if (event && event.currentTarget) {
+      event.currentTarget.classList.add('active');
+    }
+  }
+
+  function showSemester(sem) {
+    document.querySelectorAll('.semester-content').forEach(el => el.style.display = 'none');
+    const target = document.getElementById('sem-' + sem);
+    if (target) target.style.display = 'block';
+
+    document.querySelectorAll('.tab-segment-item').forEach(el => {
+      el.classList.remove('active');
+    });
+    if (event && event.currentTarget) {
+      event.currentTarget.classList.add('active');
+    }
+  }
+</script>
+{% endblock %}

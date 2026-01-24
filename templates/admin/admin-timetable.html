@@ -1,0 +1,941 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Timetable - CampusIQ{% endblock %}
+
+{% block content %}
+{% set active_page = 'timetable' %}
+<div id="app" class="app-shell">
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Timetable</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn">🔔</button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div id="timetableAlert" class="alert" style="display: block;">
+        {% for category, message in messages %}
+        <div class="alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h1>Timetable Management</h1>
+        <p class="page-subtitle">View and manage class schedules for all branches and sections</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-card--blue">
+          <div class="stat-header">
+            <div class="stat-label">Daily Periods</div>
+            <div class="stat-icon">🕒</div>
+          </div>
+          <div class="stat-value">7</div>
+          <div class="stat-subtext">Periods per day</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-header">
+            <div class="stat-label">Lab Blocks</div>
+            <div class="stat-icon">🧪</div>
+          </div>
+          <div class="stat-value">2</div>
+          <div class="stat-subtext">Integrated lab slots</div>
+        </div>
+        <div class="stat-card stat-card--sky">
+          <div class="stat-header">
+            <div class="stat-label">Days</div>
+            <div class="stat-icon">📅</div>
+          </div>
+          <div class="stat-value">6</div>
+          <div class="stat-subtext">Working days (Mon-Sat)</div>
+        </div>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <button class="btn btn-primary" onclick="showTimetableModal()">
+            <span class="action-icon">➕</span> Add Timetable Entry
+          </button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <h3 class="card-title">Timetable Explorer</h3>
+        </div>
+
+        <!-- Main View Filters -->
+        <div class="filters-card no-margin">
+          <div class="filter-grid-auto">
+            <div class="filter-group">
+              <label>Branch</label>
+              <select id="view_branch" class="form-select" onchange="loadTimetableGrid()">
+                <option value="">Select Branch</option>
+                {% for dept in departments %}
+                <option value="{{ dept.name }}" {% if branch==dept.name %}selected{% endif %}>{{ dept.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Year</label>
+              <select id="view_year" class="form-select" onchange="updateViewSemesters()">
+                <option value="">Select Year</option>
+                {% for y in [1, 2, 3, 4] %}
+                <option value="{{ y }}" {% if year==y %}selected{% endif %}>Year {{ y }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Semester</label>
+              <select id="view_semester" class="form-select" onchange="loadTimetableGrid()" {% if not year %}disabled{%
+                endif %}>
+                <option value="">Select Semester</option>
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Section</label>
+              <select id="view_section" class="form-select" onchange="loadTimetableGrid()">
+                <option value="">Select Section</option>
+                {% for sec in ['A', 'B', 'C'] %}
+                <option value="{{ sec }}" {% if section==sec %}selected{% endif %}>Section {{ sec }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="filter-group" style="flex-grow: 1;">
+              <label>Faculty View (Optional)</label>
+              <select id="view_faculty" class="form-select" onchange="loadTimetableGrid()">
+                <option value="">Search by Faculty...</option>
+                {% for faculty in faculty_members %}
+                <option value="{{ faculty.id }}">{{ faculty.name }} ({{ faculty.id_display or faculty.faculty_id }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="filter-actions-simple">
+              <button class="btn btn-outline-secondary" onclick="loadTimetableGrid()">
+                <span class="action-icon">🔄</span> Refresh
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="timetable-header-info"
+          style="padding: 1.5rem; text-align: center; border-bottom: 1px solid var(--border-color);">
+          <h4 id="timetableTitle" style="color: var(--text-secondary); font-weight: 500;">Select filters to view
+            timetable</h4>
+        </div>
+
+        <div class="table-container" style="overflow-x: auto; padding: 1rem;">
+          <div id="timetableGrid" class="timetable-grid">
+            <div style="padding: 4rem 2rem; text-align: center; color: var(--text-muted); width: 100%;">
+              <div style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;">📅</div>
+              <p>Please select Branch, Year, Semester and Section to view the timetable.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <style>
+        .timetable-grid {
+          display: grid;
+          grid-template-columns: 100px repeat(4, 1fr) 100px repeat(3, 1fr);
+          /* Day + 4 Periods + Lunch + 3 Periods */
+          gap: 1px;
+          background-color: #ddd;
+          border: 1px solid #ddd;
+          min-width: 1000px;
+        }
+
+        .grid-header {
+          background-color: #2c3e50;
+          color: white;
+          padding: 10px;
+          text-align: center;
+          font-weight: bold;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+        }
+
+        .grid-cell {
+          background-color: white;
+          padding: 10px;
+          min-height: 100px;
+          font-size: 0.9rem;
+          position: relative;
+        }
+
+        .grid-row-header {
+          background-color: #f8f9fa;
+          font-weight: bold;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+
+        .lunch-break {
+          background-color: #f0f0f0;
+          /* grid-row removed to keep in flow */
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          writing-mode: vertical-rl;
+          text-orientation: mixed;
+          font-weight: bold;
+          color: #666;
+          font-size: 0.8rem;
+          letter-spacing: 2px;
+        }
+
+        .class-card {
+          background-color: #e3f2fd;
+          border-left: 3px solid #2196f3;
+          padding: 5px;
+          border-radius: 4px;
+          margin-bottom: 5px;
+          font-size: 0.85rem;
+        }
+
+        .class-subject {
+          font-weight: bold;
+          color: #1565c0;
+        }
+
+        .class-faculty {
+          font-size: 0.8rem;
+          color: #555;
+        }
+
+        .class-room {
+          font-size: 0.75rem;
+          color: #777;
+          margin-top: 2px;
+        }
+
+        .class-actions {
+          margin-top: 5px;
+          display: flex;
+          gap: 5px;
+        }
+
+        .btn-xs {
+          padding: 2px 5px;
+          font-size: 0.7rem;
+        }
+      </style>
+
+      <!-- Add Timetable Modal -->
+      <div id="timetableModal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+          <span class="close-button" onclick="hideTimetableModal()">×</span>
+          <h2 id="modalTitle">Add Timetable Entry</h2>
+          <form id="timetableForm" action="{{ url_for('admin.add_timetable') }}" method="POST">
+            <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div class="form-group">
+                <label for="branch">Branch</label>
+                <select id="branch" name="branch" class="form-select" required onchange="updateSubjects()">
+                  <option value="">Select Branch</option>
+                  {% for dept in departments %}
+                  <option value="{{ dept.name }}">{{ dept.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="year">Year</label>
+                <select id="year" name="year" class="form-select" required onchange="updateSemesters()">
+                  <option value="">Select Year</option>
+                  <option value="1">Year 1</option>
+                  <option value="2">Year 2</option>
+                  <option value="3">Year 3</option>
+                  <option value="4">Year 4</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="semester">Semester</label>
+                <select id="semester" name="semester" class="form-select" required disabled onchange="updateSubjects()">
+                  <option value="">Select Semester</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="section">Section</label>
+                <select id="section" name="section" class="form-select" required
+                  onchange="updateFaculty(); updatePeriodBlocks();">
+                  <option value="">Select Section</option>
+                  <option value="A">Section A</option>
+                  <option value="B">Section B</option>
+                  <option value="C">Section C</option>
+                </select>
+              </div>
+              <div class="form-group" style="grid-column: span 2;">
+                <label>Class Type</label>
+                <div class="radio-group" style="display: flex; gap: 20px; padding: 0.5rem 0;">
+                  <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <input type="radio" name="class_type" value="theory" checked onchange="updateSubjects()"
+                      style="width: 18px; height: 18px;"> Theory
+                  </label>
+                  <label style="font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                    <input type="radio" name="class_type" value="lab" onchange="updateSubjects()"
+                      style="width: 18px; height: 18px;"> Lab
+                  </label>
+                </div>
+              </div>
+              <div class="form-group" style="grid-column: span 2;">
+                <label for="subject_id">Subject</label>
+                <select id="subject_id" name="subject_id" class="form-select" required
+                  onchange="updateFaculty(); updatePeriodBlocks();">
+                  <option value="">Select Subject</option>
+                  {% for subject in subjects %}
+                  <option value="{{ subject.id }}">{{ subject.name }} ({{ subject.code }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group" style="grid-column: span 2;">
+                <label for="faculty_id">Faculty</label>
+                <select id="faculty_id" name="faculty_id" class="form-select" required>
+                  <option value="">Select Faculty</option>
+                  {% for faculty in faculty_members %}
+                  <option value="{{ faculty.id }}">{{ faculty.name }} ({{ faculty.faculty_id }})</option>
+                  {% endfor %}
+                </select>
+                <small id="faculty_status"
+                  style="color: var(--text-muted); display: block; margin-top: 5px; font-style: italic;"></small>
+              </div>
+              <div class="form-group">
+                <label for="day_of_week">Day of Week</label>
+                <select id="day_of_week" name="day_of_week" class="form-select" required
+                  onchange="updatePeriodBlocks()">
+                  <option value="">Select Day</option>
+                  <option value="Monday">Monday</option>
+                  <option value="Tuesday">Tuesday</option>
+                  <option value="Wednesday">Wednesday</option>
+                  <option value="Thursday">Thursday</option>
+                  <option value="Friday">Friday</option>
+                  <option value="Saturday">Saturday</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="period_block">Period / Block</label>
+                <select id="period_block" class="form-select" required onchange="handlePeriodChange()">
+                  <option value="">Select Period/Block</option>
+                </select>
+              </div>
+              <input type="hidden" id="start_time" name="start_time">
+              <input type="hidden" id="end_time" name="end_time">
+              <div class="form-group" style="grid-column: span 2;">
+                <label for="room_number">Room Number / Location</label>
+                <input type="text" id="room_number" name="room_number" class="form-input" required
+                  placeholder="e.g. Room 301 or Lab 1">
+              </div>
+            </div>
+
+            <div id="saveProgressBarContainer" style="display: none; margin: 1.5rem 0;">
+              <div class="progress"
+                style="height: 12px; background-color: var(--bg-tertiary); border-radius: 6px; overflow: hidden;">
+                <div id="saveProgressBar" class="progress-bar" role="progressbar"
+                  style="width: 0%; height: 100%; background-color: var(--primary-color); transition: width 0.3s ease;">
+                </div>
+              </div>
+              <div id="saveProgressText" class="text-center"
+                style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">Saving...</div>
+            </div>
+
+            <div class="modal-actions"
+              style="margin-top: 2rem; display: flex; justify-content: flex-end; gap: 1rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+              <button type="button" class="btn btn-secondary" onclick="hideTimetableModal()">Cancel</button>
+              <button type="button" class="btn btn-primary" id="saveButton" onclick="saveTimetable()">Save
+                Entry</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script id="subjects-data" type="application/json">{{ subjects_data | tojson | safe }}</script>
+<script id="allocations-data" type="application/json">{{ allocations_data | tojson | safe }}</script>
+
+<script>
+  // Embed data for client-side filtering - safer method via script tags
+  const allSubjects = JSON.parse(document.getElementById('subjects-data').textContent);
+  const allAllocations = JSON.parse(document.getElementById('allocations-data').textContent);
+
+  const FIXED_PERIODS = [
+    { id: 1, start: '09:15', end: '10:05', label: 'P1 (09:15 - 10:05)' },
+    { id: 2, start: '10:05', end: '10:55', label: 'P2 (10:05 - 10:55)' },
+    { id: 3, start: '10:55', end: '11:45', label: 'P3 (10:55 - 11:45)' },
+    { id: 4, start: '11:45', end: '12:35', label: 'P4 (11:45 - 12:35)' },
+    { id: 5, start: '13:30', end: '14:20', label: 'P5 (13:30 - 14:20)' },
+    { id: 6, start: '14:20', end: '15:10', label: 'P6 (14:20 - 15:10)' },
+    { id: 7, start: '15:10', end: '16:00', label: 'P7 (15:10 - 16:00)' }
+  ];
+
+  const LAB_BLOCKS = [
+    { id: 101, start: '10:05', end: '12:35', label: 'Lab Block 1 (10:05 - 12:35)' },
+    { id: 102, start: '13:30', end: '16:00', label: 'Lab Block 2 (13:30 - 16:00)' }
+  ];
+
+  function showTimetableModal() {
+    document.getElementById('timetableModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Add Timetable Entry';
+    document.getElementById('timetableForm').action = "{{ url_for('admin.add_timetable') }}";
+    document.getElementById('timetableForm').reset();
+    document.getElementById('saveButton').innerText = 'Save Entry';
+
+    // Reset dependent dropdowns
+    const semesterSelect = document.getElementById('semester');
+    semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+    semesterSelect.disabled = true;
+
+    // Reset others
+    // Reset Class Type to Theory
+    const radios = document.getElementsByName('class_type');
+    for (let i = 0; i < radios.length; i++) {
+      if (radios[i].value === 'theory') radios[i].checked = true;
+    }
+
+    updateSubjects();
+    updatePeriodBlocks();
+  }
+
+  function hideTimetableModal() {
+    document.getElementById('timetableModal').style.display = 'none';
+  }
+
+  function updateSemesters() {
+    const year = parseInt(document.getElementById('year').value);
+    const semesterSelect = document.getElementById('semester');
+    semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+    semesterSelect.disabled = true;
+
+    if (year) {
+      semesterSelect.disabled = false;
+      let maxSemester = 0;
+
+      if (year === 1) maxSemester = 2;
+      else if (year === 2) maxSemester = 4;
+      else if (year === 3) maxSemester = 6;
+      else if (year === 4) maxSemester = 8;
+
+      for (let i = 1; i <= maxSemester; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.text = `Semester ${i}`;
+        semesterSelect.add(option);
+      }
+    }
+    updateSubjects();
+  }
+
+  function updateSubjects() {
+    const branch = document.getElementById('branch').value;
+    const year = parseInt(document.getElementById('year').value);
+    const semester = parseInt(document.getElementById('semester').value);
+    const subjectSelect = document.getElementById('subject_id');
+
+    // Save current selection
+    const currentSelection = subjectSelect.value;
+
+    subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+
+    if (branch && year && semester) {
+      // Get selected class type
+      const classTypeEl = document.querySelector('input[name="class_type"]:checked');
+      const classType = classTypeEl ? classTypeEl.value : 'theory';
+
+      const filteredSubjects = allSubjects.filter(s => {
+        const yearMatch = Number(s.year) == Number(year);
+        const semMatch = Number(s.semester) == Number(semester);
+        const branchMatch = (s.branch === branch || s.branch === 'Common' || (s.branch && s.branch.toLowerCase() === branch.toLowerCase()));
+        const typeMatch = (s.type && s.type.toLowerCase() === classType.toLowerCase());
+        return yearMatch && semMatch && branchMatch && typeMatch;
+      });
+
+      filteredSubjects.forEach(subject => {
+        const option = document.createElement('option');
+        option.value = subject.id;
+        option.text = `${subject.name} (${subject.code})`;
+        subjectSelect.add(option);
+      });
+    }
+
+    // Restore if valid
+    if (currentSelection) {
+      for (let i = 0; i < subjectSelect.options.length; i++) {
+        if (subjectSelect.options[i].value == currentSelection) {
+          subjectSelect.value = currentSelection;
+          break;
+        }
+      }
+    }
+
+    updateFaculty();
+    updatePeriodBlocks();
+  }
+
+  function updateFaculty() {
+    const branch = document.getElementById('branch').value;
+    const year = parseInt(document.getElementById('year').value);
+    const semester = parseInt(document.getElementById('semester').value);
+    const section = document.getElementById('section').value;
+    const subjectId = parseInt(document.getElementById('subject_id').value);
+    const facultySelect = document.getElementById('faculty_id');
+    const statusEl = document.getElementById('faculty_status');
+    if (statusEl) statusEl.textContent = "";
+
+    if (branch && year && semester && section && subjectId) {
+
+
+      const allocation = allAllocations.find(a =>
+        a.branch === branch &&
+        Number(a.year) == Number(year) &&
+        Number(a.semester) == Number(semester) &&
+        a.section === section &&
+        Number(a.subject_id) == Number(subjectId)
+      );
+
+
+      if (allocation) {
+        facultySelect.value = allocation.faculty_id;
+        if (statusEl) {
+          statusEl.textContent = "✅ Auto-selected assigned faculty.";
+          statusEl.style.color = "green";
+        }
+        facultySelect.style.backgroundColor = "#e9ecef"; // Visual indication of auto-select
+      } else {
+        facultySelect.value = "";
+        if (statusEl) {
+          statusEl.textContent = "⚠️ No specific faculty allocation found for this subject/section.";
+          statusEl.style.color = "#d63384";
+        }
+        facultySelect.style.backgroundColor = "";
+        facultySelect.style.pointerEvents = "auto";
+        facultySelect.style.opacity = "1";
+      }
+    } else {
+      // Reset if not fully selected
+      facultySelect.style.backgroundColor = "";
+      facultySelect.style.pointerEvents = "auto";
+      facultySelect.style.opacity = "1";
+    }
+  }
+
+  async function updatePeriodBlocks() {
+    const branch = document.getElementById('branch').value;
+    const year = document.getElementById('year').value;
+    const semester = document.getElementById('semester').value;
+    const section = document.getElementById('section').value;
+    const day = document.getElementById('day_of_week').value;
+    const subjectId = parseInt(document.getElementById('subject_id').value);
+    const facultyId = document.getElementById('faculty_id').value;
+
+    const periodSelect = document.getElementById('period_block');
+    const currentSelection = periodSelect.value;
+
+    // Clear and disable if missing required fields
+    if (!branch || !year || !semester || !section || !day || !subjectId) {
+      periodSelect.innerHTML = '<option value="">Select Period/Block</option>';
+      return;
+    }
+
+    // Determine period type
+    let periods = FIXED_PERIODS;
+    if (subjectId) {
+      const subject = allSubjects.find(s => Number(s.id) == Number(subjectId));
+      if (subject && subject.type && subject.type.toLowerCase() === 'lab') {
+        periods = LAB_BLOCKS;
+      }
+    }
+
+    // Fetch occupied slots
+    let occupied = [];
+    try {
+      // Get current entry ID if editing
+      const formAction = document.getElementById('timetableForm').action;
+      let excludeId = '';
+      if (formAction.includes('/edit/')) {
+        excludeId = formAction.split('/edit/')[1];
+      }
+
+      const params = new URLSearchParams({
+        branch, year, semester, section, day,
+        faculty_id: facultyId,
+        exclude_id: excludeId
+      });
+
+      const response = await fetch(`/admin/api/check_availability?${params}`);
+      occupied = await response.json();
+    } catch (e) {
+      console.error('Error fetching availability:', e);
+    }
+
+    // Filter periods
+    // Filter periods - SHOW ALL but mark occupied
+    periodSelect.innerHTML = '<option value="">Select Period/Block</option>';
+
+    periods.forEach(p => {
+      // Check collision
+      const collision = occupied.find(occ => (p.start < occ.end && p.end > occ.start));
+
+      const option = document.createElement('option');
+      // Value format matches handlePeriodChange expectation
+      option.value = `${p.start}-${p.end}`;
+
+      if (collision) {
+        // Show details for verification
+        option.text = `${p.label} - ⚠️ ${collision.subject_name} (${collision.faculty_name} - ${collision.faculty_id_display})`;
+        option.disabled = true;
+        option.style.background = "#ffe6e6";
+      } else {
+        option.text = p.label;
+      }
+      periodSelect.add(option);
+    });
+
+    if (currentSelection) {
+      // Check if still available (valid period and not occupied)
+      const isOccupied = occupied.some(occ => {
+        const [start, end] = currentSelection.split('-');
+        return (start < occ.end && end > occ.start);
+      });
+
+      // It's available if it exists in periods definition AND is not occupied
+      // (If we are editing, exclude_id ensures our own slot isn't 'occupied')
+      const isValidPeriod = periods.some(p => `${p.start}-${p.end}` === currentSelection);
+
+      if (isValidPeriod && !isOccupied) {
+        periodSelect.value = currentSelection;
+      } else {
+        handlePeriodChange(); // Clear hidden inputs if selection invalid/occupied
+      }
+    }
+  }
+
+  function handlePeriodChange() {
+    const value = document.getElementById('period_block').value;
+    if (value) {
+      const [start, end] = value.split('-');
+      document.getElementById('start_time').value = start;
+      document.getElementById('end_time').value = end;
+    } else {
+      document.getElementById('start_time').value = '';
+      document.getElementById('end_time').value = '';
+    }
+  }
+
+  function editTimetableEntry(entry) {
+    document.getElementById('timetableModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Edit Timetable Entry';
+    document.getElementById('timetableForm').action = `/admin/timetable/edit/${entry.id}`;
+    document.getElementById('saveButton').innerText = 'Update Entry';
+
+    document.getElementById('branch').value = entry.branch;
+    document.getElementById('year').value = entry.year;
+
+    updateSemesters(); // Populate semesters
+    document.getElementById('semester').value = entry.semester;
+
+    document.getElementById('section').value = entry.section;
+
+    updateSubjects(); // Populate subjects
+    document.getElementById('subject_id').value = entry.subject_id;
+
+    updateFaculty(); // Populate faculty (might be overridden by entry)
+    // Use current_faculty_id or original_faculty_id, or fallback to entry.faculty_id if old data
+    const facultyId = entry.current_faculty_id || entry.original_faculty_id || entry.faculty_id;
+    if (facultyId) {
+      document.getElementById('faculty_id').value = facultyId;
+    }
+
+    document.getElementById('day_of_week').value = entry.day_of_week;
+    document.getElementById('room_number').value = entry.room_number;
+
+    // Set period block - wait for async update
+    // We set the value after updatePeriodBlocks runs
+    // But updatePeriodBlocks is async.
+    // We can pre-set the value and let updatePeriodBlocks validate it?
+    // Or we can manually trigger it and then set value.
+
+    // Since updatePeriodBlocks fetches data, we need to handle the race condition.
+    // For simplicity, we'll call it and then try to set the value.
+
+    const periodValue = `${entry.start_time}-${entry.end_time}`;
+
+    // We need to ensure updatePeriodBlocks completes before setting value?
+    // Actually, updatePeriodBlocks will rebuild options.
+    // We can pass the desired value to updatePeriodBlocks? No, it reads from DOM.
+
+    // Let's modify updatePeriodBlocks to accept an optional 'selectedValue' or just set it after.
+    // But since it's async, we can't just set it immediately after calling.
+
+    updatePeriodBlocks().then(() => {
+      const periodSelect = document.getElementById('period_block');
+      // Check if the option exists (it might be occupied by THIS entry, but we excluded it in API)
+      // So it should be available.
+      periodSelect.value = periodValue;
+      handlePeriodChange();
+    });
+  }
+
+  // Event Listeners
+  document.getElementById('branch').addEventListener('change', updateSubjects);
+  document.getElementById('year').addEventListener('change', updateSemesters);
+  document.getElementById('semester').addEventListener('change', updateSubjects);
+  document.getElementById('section').addEventListener('change', updateFaculty);
+  document.getElementById('subject_id').addEventListener('change', () => {
+    updateFaculty();
+    updatePeriodBlocks();
+  });
+  document.getElementById('day_of_week').addEventListener('change', updatePeriodBlocks);
+  document.getElementById('faculty_id').addEventListener('change', updatePeriodBlocks);
+
+  // Grid View Logic
+  function updateViewSemesters() {
+    const year = parseInt(document.getElementById('view_year').value);
+    const semesterSelect = document.getElementById('view_semester');
+    semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+    semesterSelect.disabled = true;
+
+    if (year) {
+      semesterSelect.disabled = false;
+      let maxSemester = 0;
+      if (year === 1) maxSemester = 2;
+      else if (year === 2) maxSemester = 4;
+      else if (year === 3) maxSemester = 6;
+      else if (year === 4) maxSemester = 8;
+
+      for (let i = 1; i <= maxSemester; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.text = `Semester ${i}`;
+        semesterSelect.add(option);
+      }
+    }
+    loadTimetableGrid();
+  }
+
+  async function loadTimetableGrid() {
+    const branch = document.getElementById('view_branch').value;
+    const year = document.getElementById('view_year').value;
+    const semester = document.getElementById('view_semester').value;
+    const section = document.getElementById('view_section').value;
+    const facultyId = document.getElementById('view_faculty').value;
+
+    const gridContainer = document.getElementById('timetableGrid');
+    const titleElement = document.getElementById('timetableTitle');
+
+    const isClassFilter = branch && year && semester && section;
+    const isFacultyFilter = !!facultyId;
+
+    if (!isClassFilter && !isFacultyFilter) {
+      gridContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: #666;">Please select filters to view the timetable.</div>';
+      titleElement.innerText = 'Select filters to view timetable';
+      return;
+    }
+
+    // Update Title
+    if (isFacultyFilter) {
+      // Get faculty name
+      const facultySelect = document.getElementById('view_faculty');
+      const facultyName = facultySelect.options[facultySelect.selectedIndex].text;
+      titleElement.innerText = `Timetable for ${facultyName}`;
+    } else {
+      titleElement.innerText = `Timetable for ${branch} - Year ${year} - Semester ${semester} - Section ${section}`;
+    }
+
+    gridContainer.innerHTML = '<div style="padding: 2rem; text-align: center;">Loading...</div>';
+
+    try {
+      const params = new URLSearchParams();
+      if (branch) params.append('branch', branch);
+      if (year) params.append('year', year);
+      if (semester) params.append('semester', semester);
+      if (section) params.append('section', section);
+      if (facultyId) params.append('faculty_id', facultyId);
+
+      const response = await fetch(`/admin/api/get_timetable_entries?${params}`);
+      const entries = await response.json();
+
+      renderGrid(entries, isFacultyFilter);
+    } catch (e) {
+      console.error('Error loading timetable:', e);
+      gridContainer.innerHTML = '<div style="padding: 2rem; text-align: center; color: red;">Error loading timetable data.</div>';
+    }
+  }
+
+  function renderGrid(entries, isFacultyView = false) {
+    const gridContainer = document.getElementById('timetableGrid');
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const periods = [
+      { label: 'P1', start: '09:15', end: '10:05' },
+      { label: 'P2', start: '10:05', end: '10:55' },
+      { label: 'P3', start: '10:55', end: '11:45' },
+      { label: 'P4', start: '11:45', end: '12:35' },
+      { label: 'Lunch', start: '12:35', end: '13:30', isLunch: true },
+      { label: 'P5', start: '13:30', end: '14:20' },
+      { label: 'P6', start: '14:20', end: '15:10' },
+      { label: 'P7', start: '15:10', end: '16:00' }
+    ];
+
+    let html = '';
+
+    // Header Row
+    html += '<div class="grid-header">Day</div>';
+    periods.forEach(p => {
+      html += `<div class="grid-header">${p.label}<br><small>${p.start}-${p.end}</small></div>`;
+    });
+
+    // Merged Lunch Break Cell
+    // Spans from row 2 (after header) for the number of days
+    html += `<div class="lunch-break" style="grid-column: 6; grid-row: 2 / span ${days.length};">Lunch Break</div>`;
+
+    // Data Rows
+    days.forEach(day => {
+      html += `<div class="grid-row-header">${day}</div>`;
+
+      periods.forEach(p => {
+        if (p.isLunch) {
+          // Skip, handled by merged cell
+          return;
+        }
+
+        // Find entry for this slot
+        const entry = entries.find(e =>
+          e.day_of_week === day &&
+          e.start_time < p.end && e.end_time > p.start
+        );
+
+        if (entry) {
+          if (entry.start_time === p.start) {
+            let startIndex = periods.findIndex(per => per.start === entry.start_time);
+            let endIndex = periods.findIndex(per => per.end === entry.end_time);
+            let span = 1;
+
+            if (startIndex > -1 && endIndex > -1) {
+              span = (endIndex - startIndex) + 1;
+            } else {
+              // Fallback for lab blocks
+              span = 0;
+              for (let i = startIndex; i < periods.length; i++) {
+                if (periods[i].start < entry.end_time) {
+                  span++;
+                } else {
+                  break;
+                }
+              }
+            }
+
+            html += `<div class="grid-cell" style="grid-column: span ${span}; background-color: var(--bg-tertiary); border-left: 4px solid var(--primary-color);">
+                                    <div class="class-subject" style="font-weight: 700; color: var(--primary-color);">${entry.subject_name}</div>
+                                    <div class="class-faculty" style="font-size: 0.85rem; margin-top: 5px;">
+                                      ${isFacultyView
+                ? `<span class="badge badge-secondary">${entry.branch}-${entry.year}-${entry.section}</span>`
+                : `<span class="badge badge-outline-info">${entry.faculty_name}</span>`}
+                                    </div>
+                                    <div class="class-room" style="font-size: 0.8rem; color: #666; margin-top: 5px;">📍 ${entry.room_number}</div>
+                                    <div class="class-actions" style="margin-top: 8px; display: flex; gap: 4px;">
+                                        <button class="btn btn-xs btn-outline-secondary" onclick='editTimetableEntry(${JSON.stringify(entry)})'>✏️</button>
+                                        <form action="/admin/timetable/delete/${entry.id}" method="POST" style="display:inline;" onsubmit="return confirm('Delete this entry?');">
+                                            <button type="submit" class="btn btn-xs btn-outline-danger">🗑️</button>
+                                        </form>
+                                    </div>
+                                    </div>`;
+          } else {
+            // Covered by previous entry, do nothing
+            const coveringEntry = entries.find(e =>
+              e.day_of_week === day &&
+              e.start_time < p.start && e.end_time > p.start
+            );
+            if (!coveringEntry) {
+              html += `<div class="grid-cell"></div>`;
+            }
+          }
+        } else {
+          html += `<div class="grid-cell"></div>`;
+        }
+      });
+    });
+
+    gridContainer.innerHTML = html;
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function (event) {
+    if (event.target == document.getElementById('timetableModal')) {
+      hideTimetableModal();
+    }
+  }
+
+  function saveTimetable() {
+    const modal = document.getElementById('timetableModal');
+    const form = modal.querySelector('form');
+    const actionsDiv = modal.querySelector('.modal-actions');
+    const progressBarContainer = document.getElementById('saveProgressBarContainer');
+    const progressBar = document.getElementById('saveProgressBar');
+    const progressText = document.getElementById('saveProgressText');
+
+    // Basic Validation
+    if (!form.reportValidity()) return;
+
+    // Switch to Progress UI
+    actionsDiv.style.display = 'none';
+    progressBarContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.innerText = '0%';
+    progressText.innerText = 'Saving entry...';
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      if (progress < 90) {
+        progress += Math.floor(Math.random() * 10) + 5;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = `${progress}%`;
+        progressBar.innerText = `${progress}%`;
+      }
+    }, 200);
+
+    const formData = new FormData(form);
+    const url = form.action;
+
+    fetch(url, {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => {
+        if (response.ok) {
+          // Success
+          clearInterval(interval);
+          progressBar.style.width = '100%';
+          progressBar.innerText = '100%';
+          progressText.innerText = 'Saved Successfully!';
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+        } else {
+          throw new Error('Server returned error');
+        }
+      })
+      .catch(error => {
+        clearInterval(interval);
+        console.error('Error:', error);
+        alert('An error occurred while saving.');
+        // Restore UI
+        actionsDiv.style.display = 'flex';
+        progressBarContainer.style.display = 'none';
+      });
+  }
+</script>
+{% endblock %}

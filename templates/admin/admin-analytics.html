@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Analytics - CampusIQ{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% set active_page = 'analytics' %}
+{% include 'includes/admin_sidebar.html' %}
+
+<main class="main">
+  <header class="topbar">
+    <div class="header-title">
+      <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Analytics</h2>
+    </div>
+    <div class="user-area">
+      <button class="notification-btn" aria-label="Notifications">🔔
+        {% if new_updates_count > 0 %}
+        <span class="notification-dot"></span>
+        {% endif %}
+      </button>
+      <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+    </div>
+  </header>
+
+  <section class="content-area">
+    <div id="analyticsAlert"></div>
+
+    <div class="page-header">
+      <h1>Campus Analytics</h1>
+      <p class="page-subtitle">Comprehensive data insights and visualizations</p>
+    </div>
+
+    <div class="filters-card">
+      <form action="{{ url_for('admin.analytics') }}" method="GET" class="filter-grid-auto">
+        <div class="filter-group">
+          <label>Branch</label>
+          <select name="branch" id="branchFilter" class="form-select">
+            <option value="">All Branches</option>
+            {% for dept in ['Computer Science & Engineering', 'Civil Engineering', 'Mechanical Engineering',
+            'Electrical & Electronics Engineering', 'Artificial Intelligence & Data Science'] %}
+            <option value="{{ dept }}" {% if branch==dept %}selected{% endif %}>{{ dept }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Year</label>
+          <select name="year" id="yearFilter" class="form-select">
+            <option value="">All Years</option>
+            <option value="1" {% if year==1 %}selected{% endif %}>Year 1</option>
+            <option value="2" {% if year==2 %}selected{% endif %}>Year 2</option>
+            <option value="3" {% if year==3 %}selected{% endif %}>Year 3</option>
+            <option value="4" {% if year==4 %}selected{% endif %}>Year 4</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>Semester</label>
+          <select name="semester" id="semesterFilter" class="form-select">
+            <option value="">All Semesters</option>
+            {% for s in range(1, 9) %}
+            <option value="{{ s }}" {% if semester==s %}selected{% endif %}>Semester {{ s
+              }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-actions-simple">
+          <button type="submit" class="btn btn-primary">Apply</button>
+          <a href="{{ url_for('admin.analytics') }}" class="btn btn-outline-secondary"
+            style="text-decoration:none;">Clear</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card stat-card--blue">
+        <div class="stat-header">
+          <div class="stat-label">Total Students</div>
+          <div class="stat-icon">👥</div>
+        </div>
+        <div class="stat-value">{{ total_students }}</div>
+        <div class="stat-subtext">Across all departments</div>
+      </div>
+      <div class="stat-card stat-card--green">
+        <div class="stat-header">
+          <div class="stat-label">Avg. Attendance</div>
+          <div class="stat-icon">✅</div>
+        </div>
+        <div class="stat-value">{{ avg_attendance }}%</div>
+        <div class="stat-subtext">Overall উপস্থিতি</div>
+      </div>
+      <div class="stat-card stat-card--sky">
+        <div class="stat-header">
+          <div class="stat-label">Avg. Performance</div>
+          <div class="stat-icon">📈</div>
+        </div>
+        <div class="stat-value">{{ avg_performance }}%</div>
+        <div class="stat-subtext">Academic score avg</div>
+      </div>
+      <div class="stat-card stat-card--amber">
+        <div class="stat-header">
+          <div class="stat-label">Pending Fees</div>
+          <div class="stat-icon">💰</div>
+        </div>
+        <div class="stat-value">₹{{ "{:,.2f}".format(total_pending_fees) }}</div>
+        <div class="stat-subtext">Correction needed</div>
+      </div>
+    </div>
+
+    <div class="d-grid-2">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Enrollment by Branch</h3>
+        </div>
+        <div class="chart-container" style="height: 300px; padding: 1rem;">
+          <canvas id="enrollmentChart" data-labels="{{ enrollment_labels | tojson | safe }}"
+            data-values="{{ enrollment_values | tojson | safe }}"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Attendance Rate by Branch</h3>
+        </div>
+        <div class="chart-container" style="height: 300px; padding: 1rem;">
+          <canvas id="attendanceChart" data-labels="{{ attendance_labels | tojson | safe }}"
+            data-values="{{ attendance_values | tojson | safe }}"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Fee Collection Status</h3>
+        </div>
+        <div class="chart-container" style="height: 300px; padding: 1rem;">
+          <canvas id="feeChart" data-labels="{{ fee_labels | tojson | safe }}"
+            data-values="{{ fee_values | tojson | safe }}"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Average Performance by Branch</h3>
+        </div>
+        <div class="chart-container" style="height: 300px; padding: 1rem;">
+          <canvas id="performanceChart" data-labels="{{ performance_labels | tojson | safe }}"
+            data-values="{{ performance_values | tojson | safe }}"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="dashboard-card full-width" style="margin-top: 2rem;">
+      <h3>Department Overview</h3>
+      <div class="table-container">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Department</th>
+              <th>Students</th>
+              <th>Faculty</th>
+              <th>Avg. Attendance</th>
+              <th>Fee Collection</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for dept in dept_overview %}
+            <tr>
+              <td>{{ dept.name }}</td>
+              <td>{{ dept.students }}</td>
+              <td>{{ dept.faculty }}</td>
+              <td>{{ dept.attendance }}</td>
+              <td>{{ dept.fee_collection }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </section>
+</main>
+</div>
+
+<script>
+  // Enrollment Chart
+  const enrollmentCanvas = document.getElementById('enrollmentChart');
+  const enrollmentCtx = enrollmentCanvas.getContext('2d');
+  const enrollmentLabels = JSON.parse(enrollmentCanvas.dataset.labels || '[]');
+  const enrollmentValues = JSON.parse(enrollmentCanvas.dataset.values || '[]');
+
+  new Chart(enrollmentCtx, {
+    type: 'bar',
+    data: {
+      labels: enrollmentLabels,
+      datasets: [{
+        label: 'Students',
+        data: enrollmentValues,
+        backgroundColor: '#4f46e5',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+
+  // Fee Chart
+  const feeCanvas = document.getElementById('feeChart');
+  const feeCtx = feeCanvas.getContext('2d');
+  const feeLabels = JSON.parse(feeCanvas.dataset.labels || '[]');
+  const feeValues = JSON.parse(feeCanvas.dataset.values || '[]');
+
+  new Chart(feeCtx, {
+    type: 'doughnut',
+    data: {
+      labels: feeLabels,
+      datasets: [{
+        data: feeValues,
+        backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+        borderWidth: 0
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+
+  // Attendance Chart
+  const attendanceCanvas = document.getElementById('attendanceChart');
+  const attendanceCtx = attendanceCanvas.getContext('2d');
+  const attendanceLabels = JSON.parse(attendanceCanvas.dataset.labels || '[]');
+  const attendanceValues = JSON.parse(attendanceCanvas.dataset.values || '[]');
+
+  new Chart(attendanceCtx, {
+    type: 'bar',
+    data: {
+      labels: attendanceLabels,
+      datasets: [{
+        label: 'Attendance %',
+        data: attendanceValues,
+        backgroundColor: '#10b981',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+
+  // Performance Chart
+  const performanceCanvas = document.getElementById('performanceChart');
+  const performanceCtx = performanceCanvas.getContext('2d');
+  const performanceLabels = JSON.parse(performanceCanvas.dataset.labels || '[]');
+  const performanceValues = JSON.parse(performanceCanvas.dataset.values || '[]');
+
+  new Chart(performanceCtx, {
+    type: 'line',
+    data: {
+      labels: performanceLabels,
+      datasets: [{
+        label: 'Performance %',
+        data: performanceValues,
+        backgroundColor: 'rgba(79, 70, 229, 0.2)',
+        borderColor: '#4f46e5',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true, max: 100 }
+      }
+    }
+  });
+</script>
+
+
+</div>
+{% endblock %}

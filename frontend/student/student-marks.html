@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Marks - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="student-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="student-profile.html" class="nav-item">
+          <span class="nav-icon">👤</span>
+          My Profile
+        </a>
+        <a href="student-assignments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assignments
+        </a>
+        <a href="student-marks.html" class="nav-item active">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="student-attendance.html" class="nav-item">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="student-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="student-resources.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">🎓</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Student User</div>
+            <div class="user-role" id="current-role">Undergraduate</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search marks..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="window.handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="studentMarksAlert"></div>
+
+        <div class="page-header">
+          <h1>My Marks</h1>
+          <p class="page-subtitle">View your academic performance and detailed subject marks</p>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-content">
+              <div class="stat-label">Current CGPA</div>
+              <div class="stat-value" id="currentCGPA">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">🏆</div>
+            <div class="stat-content">
+              <div class="stat-label">Credits Earned</div>
+              <div class="stat-value" id="creditsEarned">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📈</div>
+            <div class="stat-content">
+              <div class="stat-label">Overall Percentage</div>
+              <div class="stat-value" id="overallPercentage">--</div>
+            </div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">📚</div>
+            <div class="stat-content">
+              <div class="stat-label">Backlog Subjects</div>
+              <div class="stat-value" id="backlogSubjects">--</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-bar" style="margin-top: 32px;">
+          <div class="filter-group">
+            <select id="semesterFilter" class="form-select" onchange="studentMarks.filterSemesterCards()">
+              <option value="">All Semesters</option>
+              <!-- Options populated by JS -->
+            </select>
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 32px;">
+          <h3>Semester Overview <span class="badge badge-info" id="filteredSemesterCount">-- semesters</span></h3>
+          <div id="semesterCardsContainer" class="semester-cards-grid">
+            <!-- Semester cards populated by JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/marks-calculator.js"></script>
+  <script src="../js/student-marks.js"></script>
+
+  <style>
+    .semester-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 20px;
+    }
+
+    .semester-card {
+      background: var(--bg-primary);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      padding: 25px;
+      text-align: center;
+      box-shadow: var(--shadow);
+      transition: all 0.2s ease;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 150px;
+    }
+
+    .semester-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: var(--accent-primary);
+    }
+
+    .semester-card h4 {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: 10px;
+    }
+
+    .semester-card .status-badge {
+      padding: 8px 15px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 10px;
+    }
+
+    .semester-card.on-going {
+      border-left: 6px solid var(--accent-primary);
+      background: rgba(var(--primary-color-rgb), 0.05);
+    }
+    .semester-card.on-going:hover {
+      border-color: var(--accent-primary);
+    }
+
+    .semester-card.complete {
+      border-left: 6px solid var(--accent-success);
+      background: rgba(var(--success-color-rgb), 0.05);
+    }
+    .semester-card.complete:hover {
+      border-color: var(--accent-success);
+    }
+
+    .semester-card.upcoming {
+      border-left: 6px solid var(--text-muted);
+      background: var(--bg-secondary);
+    }
+    .semester-card.upcoming:hover {
+      border-color: var(--text-muted);
+    }
+
+    .semester-card.no-data {
+      border-left: 6px solid var(--border-color);
+      background: var(--bg-secondary);
+      cursor: default;
+      opacity: 0.7;
+    }
+    .semester-card.no-data:hover {
+      transform: none;
+      box-shadow: var(--shadow);
+      border-color: var(--border-color);
+    }
+  </style>
+</body>
+</html>

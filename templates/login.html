@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Login - CampusIQ</title>
+    <!-- CSS -->
+    <link rel="stylesheet" href="/static/css/main.css" />
+    <link rel="stylesheet" href="/static/css/login.css" />
+    <!-- Google Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+
+<body>
+    <main class="login-page-layout" role="main">
+        <!-- Left / Hero -->
+        <aside class="info-section" aria-hidden="false">
+            <!-- Decorative circle overlay handled by CSS -->
+            <div class="info-content" role="presentation">
+                <h2>Welcome to <br><span class="login-brand">CampusIQ</span></h2>
+                <p id="dynamic-message">A smart, unified campus management experience.</p>
+                <ul class="feature-list" aria-hidden="true">
+                    <li><span class="icon">🎓</span> Seamless academic tracking</li>
+                    <li><span class="icon">📚</span> Faculty & student portals</li>
+                    <li><span class="icon">💳</span> Fee management</li>
+                    <li><span class="icon">📢</span> Real-time announcements</li>
+                    <li><span class="icon">📈</span> Analytics & reporting</li>
+                </ul>
+            </div>
+        </aside>
+        <!-- Right / Login -->
+        <section class="login-form-wrapper" aria-label="Login form">
+            <div class="login-container" role="form" aria-labelledby="login-title">
+                <div class="brand-wrap">
+                    <img src="/static/assets/logo.png" alt="CampusIQ Logo" class="logo"
+                        onerror="this.style.display='none'">
+                </div>
+                <h1 id="login-title">CampusIQ</h1>
+                <p class="system-tagline">Intelligent Campus Management System</p>
+
+                <div id="loginAlert" role="alert" aria-live="polite" style="display: none;">
+                    <div class="alert alert-error" id="loginAlertMessage"></div>
+                </div>
+
+                <form id="loginForm" autocomplete="on" novalidate>
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input id="username" name="username" type="text" class="form-input" placeholder="Enter username"
+                            required autocomplete="username" autofocus />
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <div class="password-wrap">
+                            <input id="password" name="password" type="password" class="form-input"
+                                placeholder="Enter password" required autocomplete="current-password" />
+                            <button type="button" id="togglePassword" class="toggle-password"
+                                aria-label="Show password">👁️</button>
+                        </div>
+                    </div>
+                    <div class="checkbox-group">
+                        <input id="rememberMe" name="rememberMe" type="checkbox" />
+                        <label for="rememberMe">Remember me</label>
+                    </div>
+                    <button id="loginBtn" class="login-btn" type="submit">
+                        <span>Login</span>
+                    </button>
+                </form>
+                <div class="login-links">
+                    <a href="#" id="forgotPassword">Forgot password?</a>
+                    <span class="sep">•</span>
+                    <a href="#" id="contactSupport">Contact support</a>
+                </div>
+            </div>
+            <footer class="footer-text">© 2025 <strong>CampusIQ</strong>. All rights reserved.</footer>
+        </section>
+    </main>
+
+    <script>
+        // Simple password toggle script
+        document.getElementById('togglePassword').addEventListener('click', function () {
+            const passwordInput = document.getElementById('password');
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                this.textContent = '🙈'; // Change icon
+            } else {
+                passwordInput.type = 'password';
+                this.textContent = '👁️';
+            }
+        });
+
+        // Dynamic Greeting
+        const hour = new Date().getHours();
+        const messageElement = document.getElementById('dynamic-message');
+        if (hour < 12) {
+            messageElement.textContent = "Good Morning! Ready for a productive day?";
+        } else if (hour < 18) {
+            messageElement.textContent = "Good Afternoon! Keeping track of success.";
+        } else {
+            messageElement.textContent = "Good Evening! A smart way to manage your campus.";
+        }
+
+        // JWT Authorization Handling
+        document.getElementById('loginForm').addEventListener('submit', async function (e) {
+            e.preventDefault();
+
+            const loginBtn = document.getElementById('loginBtn');
+            const alertBox = document.getElementById('loginAlert');
+            const alertMsg = document.getElementById('loginAlertMessage');
+
+            // Reset UI
+            alertBox.style.display = 'none';
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span>Logging in...</span>';
+
+            const formData = new FormData(this);
+
+            try {
+                const response = await fetch('/api/login', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store token
+                    localStorage.setItem('access_token', data.access_token);
+                    // Redirect
+                    window.location.href = data.redirect_url;
+                } else {
+                    throw new Error(data.detail || 'Login failed');
+                }
+            } catch (error) {
+                alertMsg.textContent = error.message;
+                alertBox.style.display = 'block';
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<span>Login</span>';
+            }
+        });
+    </script>
+</body>
+
+</html>

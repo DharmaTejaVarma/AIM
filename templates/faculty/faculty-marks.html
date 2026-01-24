@@ -1,0 +1,830 @@
+{% extends "base.html" %}
+
+{% block title %}Marks Management | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  <!-- Sidebar -->
+  {% set active_page = 'marks' %}
+  {% include 'includes/faculty_sidebar.html' %}
+
+  <!-- Main Content -->
+  <main class="main">
+    <header class="topbar">
+      <h2 style="font-size: 1.25rem; margin: 0; color: var(--text-primary);">Marks</h2>
+      <div class="user-area">
+        <button class="notification-btn">🔔</button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div class="page-header">
+        <div>
+          <h1>Marks Management</h1>
+          <p class="page-subtitle">Enter and track student performance across assessments.</p>
+        </div>
+        <div class="action-bar">
+          <button class="btn btn-primary" onclick="marksManager.openModal()">
+            <span class="action-icon">➕</span> Enter Marks
+          </button>
+          <button class="btn btn-outline-success" onclick="marksManager.giveFullMarksForAllAssignments()">
+            <span class="action-icon">✅</span> Full Marks (Assign)
+          </button>
+          <button class="btn btn-secondary" onclick="marksManager.exportMarks()">
+            <span class="action-icon">📥</span> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Filters Card -->
+      <div class="card mb-4" style="border-left: 4px solid var(--primary-color);">
+        <div class="card-body">
+          <div
+            style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem; align-items: end;">
+            <div class="form-group mb-0">
+              <label for="subjectFilter" class="form-label">Subject</label>
+              <select id="subjectFilter" class="form-select" onchange="marksManager.handleMainSubjectChange()">
+                <option value="">Select Subject</option>
+                {% for class in class_offerings %}
+                <option
+                  value="{{ class.subject.id }}_{{ class.branch }}_{{ class.year }}_{{ class.semester }}_{{ class.section }}_{{ class.subject.type }}"
+                  data-offering-id="{{ class.id }}">
+                  {{ class.subject.name }} ({{ class.branch }} - {{ class.year }} - {{ class.section }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="form-group mb-0">
+              <label for="assessmentFilter" class="form-label">Assessment</label>
+              <select id="assessmentFilter" class="form-select" onchange="marksManager.handleMainAssessmentChange()"
+                disabled>
+                <option value="">Select Assessment</option>
+                <option value="mid1">Mid 1</option>
+                <option value="mid2">Mid 2</option>
+                <option value="assignment">Assignment</option>
+                <option value="lab_day_to_day">Lab Day-to-Day</option>
+                <option value="lab_internal">Lab Internal</option>
+              </select>
+            </div>
+            <div class="form-group mb-0" id="assignmentFilterGroup" style="display: none;">
+              <label for="assignmentFilter" class="form-label">Assignment No.</label>
+              <select id="assignmentFilter" class="form-select" onchange="marksManager.loadMarks()">
+                <option value="all">All Assignments</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5">5</option>
+              </select>
+            </div>
+            <div class="form-group mb-0">
+              <!-- Toggle Button Style -->
+              <button id="absentFilterBtn" class="btn btn-outline-danger w-100"
+                onclick="marksManager.toggleAbsentFilter()">
+                <span class="icon">🚫</span> Show Absent Only
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="stats-grid mb-4">
+        <div class="stat-card stat-card--blue">
+          <div class="stat-header">
+            <div class="stat-label">Class Average</div>
+            <div class="stat-icon">📊</div>
+          </div>
+          <div class="stat-value" id="classAverage">0%</div>
+          <div class="stat-subtext">Overall performance</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-header">
+            <div class="stat-label">Highest Score</div>
+            <div class="stat-icon">🏆</div>
+          </div>
+          <div class="stat-value" id="highestMarks">0</div>
+          <div class="stat-subtext" style="cursor: pointer; text-decoration: underline;"
+            onclick="marksManager.showTopScorers()">View Top Scorers</div>
+        </div>
+        <div class="stat-card stat-card--amber">
+          <div class="stat-header">
+            <div class="stat-label">Pass Percentage</div>
+            <div class="stat-icon">🎓</div>
+          </div>
+          <div class="stat-value" id="passPercentage">0%</div>
+          <div class="stat-subtext">Students > 40%</div>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="card">
+        <div class="card-header border-bottom">
+          <h3 class="card-title">Student Marks List</h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Assessment</th>
+                <th>Marks</th>
+                <th>Max Marks</th>
+                <th>%</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="marksTableBody">
+              <tr>
+                <td colspan="7" class="text-center text-muted py-5">
+                  <div style="font-size: 2rem; margin-bottom: 0.5rem;">👆</div>
+                  Select a subject and assessment above to view data.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Modal -->
+  <div id="notificationModal" class="modal">
+    <!-- ... same as before ... -->
+    <div class="modal-content">
+      <span class="close-button" onclick="toggleNotificationModal()">×</span>
+      <h2>Notifications</h2>
+      <div class="notification-list">
+        {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement-item">
+          <div class="title">{{ ann.title }}</div>
+          <div class="content">{{ ann.content }}</div>
+          <div class="meta">{{ ann.date }} • <span class="badge badge-info">{{ ann.priority|capitalize }}</span></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center p-3">No notifications.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Marks Entry Modal -->
+<!-- Keeping the modal structure mostly same but ensuring classes match enterprise -->
+<!-- Marks Entry Modal -->
+<div id="marksModal" class="modal">
+  <div class="modal-content modal-xl">
+    <div class="modal-header"
+      style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center;">
+      <h2 style="margin: 0; font-size: 1.5rem;">Enter Marks</h2>
+      <span class="close-button" onclick="marksManager.closeModal()"
+        style="position: static; font-size: 2rem; line-height: 1;">×</span>
+    </div>
+
+    <!-- Context Information Card -->
+    <div class="card mb-4"
+      style="background-color: var(--surface-color); border: 1px solid var(--border-color); border-left: 4px solid var(--primary-color);">
+      <div class="card-body" style="padding: 1.25rem;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.5rem;">
+          <div>
+            <label class="text-muted small text-uppercase font-weight-bold d-block mb-1">Subject</label>
+            <div class="font-weight-bold" id="modalSubjectDisplay"
+              style="font-size: 1.1rem; color: var(--primary-color);">-</div>
+          </div>
+          <div>
+            <label class="text-muted small text-uppercase font-weight-bold d-block mb-1">Assessment</label>
+            <div class="font-weight-bold" id="modalAssessmentDisplay" style="font-size: 1.1rem;">-</div>
+          </div>
+          <div id="modalAssignmentDisplayGroup" style="display:none;">
+            <label class="text-muted small text-uppercase font-weight-bold d-block mb-1">Assignment</label>
+            <div class="font-weight-bold" id="modalAssignmentDisplay" style="font-size: 1.1rem;">-</div>
+          </div>
+          <div>
+            <label class="text-muted small text-uppercase font-weight-bold d-block mb-1">Max Marks</label>
+            <input type="number" id="modalMaxMarksInput" class="form-input"
+              style="width: 100px; font-weight: bold; padding: 5px 10px;" value="100">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bulk Actions Toolbar -->
+    <div class="card bg-light mb-4 border-0" style="background-color: #f8f9fa;">
+      <div class="card-body py-3 px-3">
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 1.5rem;">
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <label class="font-weight-bold mb-0 text-secondary">Bulk Actions:</label>
+            <div class="input-group" style="display: flex;">
+              <input type="number" id="bulkMarksInput" class="form-input"
+                style="width: 100px; border-top-right-radius: 0; border-bottom-right-radius: 0;" placeholder="Marks">
+              <button type="button" class="btn btn-secondary btn-sm"
+                style="border-top-left-radius: 0; border-bottom-left-radius: 0;"
+                onclick="marksManager.applyBulkMarks()">Apply</button>
+            </div>
+          </div>
+
+          <div class="vr" style="height: 24px; border-left: 1px solid var(--border-color);"></div>
+
+          <div style="display: flex; align-items: center; gap: 0.75rem;">
+            <button type="button" class="btn btn-sm btn-outline-danger" onclick="marksManager.markAllAbsent()">
+              <span class="icon">🚫</span> Mark All Absent
+            </button>
+          </div>
+
+          <div class="vr" style="height: 24px; border-left: 1px solid var(--border-color);"></div>
+
+          <div class="form-check mb-0" style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="unlockMarksToggle" class="form-check-input" style="width: 18px; height: 18px;"
+              onchange="marksManager.toggleUnlock(this)">
+            <label for="unlockMarksToggle" class="form-check-label user-select-none"
+              style="cursor: pointer; font-size: 0.95rem;">Unlock Existing Marks</label>
+          </div>
+        </div>
+
+        <div id="updateReasonGroup" class="mt-3"
+          style="display: none; border-top: 1px solid #dee2e6; padding-top: 1rem;">
+          <label for="updateReason" class="form-label font-weight-bold small text-danger">Reason for Update (Audit
+            Trail) *</label>
+          <textarea id="updateReason" class="form-input w-100" rows="2"
+            placeholder="Please explain why you are modifying existing records..."></textarea>
+        </div>
+      </div>
+    </div>
+
+    <form id="marksForm" onsubmit="event.preventDefault(); marksManager.saveMarks();">
+      <input type="hidden" id="modalSubjectValue">
+      <input type="hidden" id="modalAssessmentValue">
+      <input type="hidden" id="modalAssignmentValue">
+
+      <div class="table-container shadow-sm p-0"
+        style="max-height: 55vh; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-md);">
+        <table class="data-table mb-0" style="width: 100%; border-collapse: collapse;">
+          <thead
+            style="position: sticky; top: 0; background: #fff; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <tr>
+              <th style="padding: 1rem; width: 15%;">Student ID</th>
+              <th style="padding: 1rem; width: 35%;">Name</th>
+              <th style="padding: 1rem; width: 20%;">Marks Obtained</th>
+              <th style="padding: 1rem; width: 10%;">%</th>
+              <th style="padding: 1rem; width: 20%; text-align: center;">Absent Status</th>
+            </tr>
+          </thead>
+          <tbody id="studentsMarksBody">
+            <!-- Rows generated by JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer mt-4"
+        style="border-top: 1px solid var(--border-color); padding-top: 1rem; display: flex; flex-direction: column;">
+        <div class="modal-actions w-100" style="margin-top: 0; display: flex; justify-content: flex-end; gap: 1rem;">
+          <button type="button" class="btn btn-secondary btn-lg" onclick="marksManager.closeModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary btn-lg px-5">Save & Update</button>
+        </div>
+        <!-- Progress -->
+        <div class="save-progress-container w-100 mt-3" style="display: none;">
+          <div class="progress" style="height: 6px; background-color: #e9ecef; border-radius: 4px;">
+            <div id="inlineProgressBar" class="progress-bar"
+              style="width: 0%; height: 100%; background-color: var(--primary-color);"></div>
+          </div>
+          <div class="text-center small text-muted mt-2">Saving data to server...</div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Top Scorers Modal -->
+<div id="topScorersModal" class="modal">
+  <div class="modal-content" style="max-width: 500px;">
+    <span class="close-button" onclick="document.getElementById('topScorersModal').style.display='none'">×</span>
+    <h2 style="text-align: center; margin-bottom: 20px;">🏆 Top Scorers</h2>
+    <p id="topScorersContext" class="text-center text-muted mb-3"></p>
+    <div class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th width="15%">Rank</th>
+            <th>Name</th>
+            <th width="20%">Marks</th>
+            <th width="20%">%</th>
+          </tr>
+        </thead>
+        <tbody id="topScorersBody">
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- JS imports or inline -->
+<script>
+  // ... Notifications JS ...
+  function toggleNotificationModal() {
+    const modal = document.getElementById('notificationModal');
+    modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+  }
+  // Clicking outside closes modals
+  window.onclick = function (event) {
+    const nModal = document.getElementById('notificationModal');
+    const mModal = document.getElementById('marksModal');
+    const tModal = document.getElementById('topScorersModal');
+    if (event.target == nModal) nModal.style.display = "none";
+    if (event.target == mModal) marksManager.closeModal();
+    if (event.target == tModal) tModal.style.display = "none";
+  }
+</script>
+
+<script>
+  // Marks Manager Logic
+  const marksManager = {
+    state: {
+      currentSubject: null,
+      currentAssessment: null,
+      currentAssignment: null,
+      marksData: [],
+      stats: {},
+      showAbsentOnly: false,
+      editingStudentId: null
+    },
+
+    init() {
+      // URL Param Check
+      const urlParams = new URLSearchParams(window.location.search);
+      const offeringId = urlParams.get('offering_id');
+      if (offeringId) {
+        const select = document.getElementById('subjectFilter');
+        for (let opt of select.options) {
+          if (opt.getAttribute('data-offering-id') === offeringId) {
+            select.value = opt.value;
+            this.handleMainSubjectChange();
+            break;
+          }
+        }
+      }
+    },
+
+    handleMainSubjectChange() {
+      const subjectVal = document.getElementById('subjectFilter').value;
+      const assessmentSelect = document.getElementById('assessmentFilter');
+
+      if (subjectVal) {
+        assessmentSelect.disabled = false;
+        this.state.currentSubject = subjectVal;
+        // assignments reset
+        document.getElementById('assignmentFilterGroup').style.display = 'none';
+        assessmentSelect.value = "";
+        this.clearTable();
+      } else {
+        assessmentSelect.disabled = true;
+        this.state.currentSubject = null;
+        this.clearTable();
+      }
+    },
+
+    handleMainAssessmentChange() {
+      const assessmentVal = document.getElementById('assessmentFilter').value;
+      const assignmentGroup = document.getElementById('assignmentFilterGroup');
+
+      this.state.currentAssessment = assessmentVal;
+
+      if (assessmentVal === 'assignment') {
+        assignmentGroup.style.display = 'block';
+        document.getElementById('assignmentFilter').value = 'all';
+        this.loadMarks();
+      } else {
+        assignmentGroup.style.display = 'none';
+        if (assessmentVal) this.loadMarks();
+        else this.clearTable();
+      }
+    },
+
+    async loadMarks() {
+      const subjectVal = this.state.currentSubject;
+      const assessmentVal = this.state.currentAssessment;
+      const assignmentVal = document.getElementById('assignmentFilter').value;
+
+      if (!subjectVal || !assessmentVal) return;
+
+      const tbody = document.getElementById('marksTableBody');
+      tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4">Loading marks...</td></tr>';
+
+      try {
+        const res = await fetch('/faculty/marks/fetch_marks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject_value: subjectVal,
+            assessment_filter: assessmentVal,
+            assignment_filter: (assessmentVal === 'assignment' && assignmentVal) ? assignmentVal : null
+          })
+        });
+
+        if (!res.ok) throw new Error("Failed to load marks");
+
+        const data = await res.json();
+        this.state.marksData = data.records;
+        this.state.stats = data.stats;
+
+        this.renderTable(data.records);
+        this.updateStats(data.stats, data.records);
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger py-4">Error: ${e.message}</td></tr>`;
+      }
+    },
+
+    renderTable(records) {
+      const tbody = document.getElementById('marksTableBody');
+      if (!records || records.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No marks recorded yet.</td></tr>';
+        return;
+      }
+
+      // Filter Absent
+      let displayRecords = records;
+      if (this.state.showAbsentOnly) {
+        displayRecords = records.filter(r => r.is_absent);
+      }
+
+      if (displayRecords.length === 0 && this.state.showAbsentOnly) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">No absent students found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = displayRecords.map(r => `
+                <tr>
+                    <td><span class="font-mono">${r.student_id_display}</span></td>
+                    <td><div class="font-weight-bold">${r.student_name}</div></td>
+                    <td>${r.assessment}</td>
+                    <td>
+                        <span class="badge ${this.getBadgeClass(r.percentage)}">${r.marks}</span>
+                    </td>
+                    <td>${r.max_marks}</td>
+                    <td>${r.percentage}%</td>
+                    <td class="text-right">
+                        <button class="btn btn-sm btn-outline-primary" onclick='marksManager.openModal(${JSON.stringify(r).replace(/'/g, "&#39;")})'>
+                            ✏️ Edit
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+    },
+
+    updateStats(stats, records) {
+      document.getElementById('classAverage').innerText = (stats.avg_percentage || 0) + '%';
+
+      const highestEl = document.getElementById('highestMarks');
+      highestEl.innerText = stats.highest || 0;
+      highestEl.onclick = () => this.filterScore(stats.highest);
+
+      // Pass %
+      if (records.length) {
+        const passed = records.filter(r => (Number(r.percentage) || 0) >= 40).length; // Assuming 40% pass
+        const pct = Math.round((passed / records.length) * 100);
+        document.getElementById('passPercentage').innerText = pct + '%';
+      } else {
+        document.getElementById('passPercentage').innerText = '-';
+      }
+    },
+
+    getBadgeClass(pct) {
+      if (pct >= 75) return 'badge-success';
+      if (pct >= 60) return 'badge-info';
+      if (pct >= 40) return 'badge-warning';
+      return 'badge-danger';
+    },
+
+    filterScore(score) {
+      if (!this.state.marksData) return;
+      const filtered = this.state.marksData.filter(r => r.marks == score);
+      this.renderTable(filtered);
+      // Show reset indicator handled by UI clarity or reload
+    },
+
+    toggleAbsentFilter() {
+      this.state.showAbsentOnly = !this.state.showAbsentOnly;
+      const btn = document.getElementById('absentFilterBtn');
+      if (this.state.showAbsentOnly) {
+        btn.classList.add('active', 'btn-danger');
+        btn.classList.remove('btn-outline-danger');
+        btn.innerHTML = '<span class="icon">✖</span> Clear Filter';
+      } else {
+        btn.classList.remove('active', 'btn-danger');
+        btn.classList.add('btn-outline-danger');
+        btn.innerHTML = '<span class="icon">🚫</span> Show Absent Only';
+      }
+      this.renderTable(this.state.marksData);
+    },
+
+    clearTable() {
+      document.getElementById('marksTableBody').innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">Select subject to view data.</td></tr>';
+      document.getElementById('classAverage').innerText = '0%';
+      document.getElementById('highestMarks').innerText = '0';
+      document.getElementById('passPercentage').innerText = '0%';
+    },
+
+    // --- Modal & Entry Logic ---
+
+    async openModal(record = null) {
+      const modal = document.getElementById('marksModal');
+      this.state.editingStudentId = record ? record.student_id_display : null;
+
+      // Set Titles
+      const subOpt = document.getElementById('subjectFilter').selectedOptions[0];
+      const assOpt = document.getElementById('assessmentFilter').selectedOptions[0];
+      const asnOpt = document.getElementById('assignmentFilter');
+
+      if (!subOpt || !assOpt) { alert("Please select a subject and assessment first."); return; }
+
+      document.getElementById('modalSubjectDisplay').innerText = subOpt.text;
+      document.getElementById('modalAssessmentDisplay').innerText = assOpt.text;
+
+      if (this.state.currentAssessment === 'assignment') {
+        document.getElementById('modalAssignmentDisplayGroup').style.display = 'block';
+        document.getElementById('modalAssignmentDisplay').innerText = asnOpt.options[asnOpt.selectedIndex].text;
+      } else {
+        document.getElementById('modalAssignmentDisplayGroup').style.display = 'none';
+      }
+
+      await this.prepareForm();
+      modal.style.display = 'block';
+    },
+
+    closeModal() {
+      document.getElementById('marksModal').style.display = 'none';
+      this.state.editingStudentId = null;
+    },
+
+    async prepareForm() {
+      const tbody = document.getElementById('studentsMarksBody');
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center">Loading student list...</td></tr>';
+
+      const reqData = {
+        subject_value: this.state.currentSubject,
+        assessment_type: this.state.currentAssessment,
+        assignment_number: (this.state.currentAssessment === 'assignment') ? document.getElementById('assignmentFilter').value : null
+      };
+
+      try {
+        const res = await fetch('/faculty/marks/get_students_for_marks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reqData)
+        });
+        const data = await res.json();
+
+        // Determine Max Marks
+        let maxMarks = 100;
+        if (data.existing_marks.length) maxMarks = data.existing_marks[0].max_marks;
+        else if (['mid1', 'mid2'].includes(this.state.currentAssessment)) maxMarks = 25;
+        else if (this.state.currentAssessment === 'assignment') maxMarks = 5;
+
+        document.getElementById('modalMaxMarksInput').value = maxMarks;
+
+        // UI Mode (Single vs Bulk)
+        const isSingle = !!this.state.editingStudentId;
+        const bulkTools = document.querySelector('.card.bg-light'); // Wrapper for bulk tools
+        if (isSingle) {
+          if (bulkTools) bulkTools.style.display = 'none';
+        } else {
+          if (bulkTools) bulkTools.style.display = 'block';
+          document.getElementById('unlockMarksToggle').checked = false;
+        }
+
+        // Filter students if single edit
+        let students = data.students;
+        if (isSingle) {
+          students = students.filter(s => s.student_id === this.state.editingStudentId);
+        }
+
+        // Render
+        tbody.innerHTML = students.map(s => {
+          const existing = data.existing_marks.find(m => m.student_id === s.id);
+          const markVal = existing ? existing.marks : '';
+          const isAbsent = existing ? existing.is_absent : false;
+          const locked = (existing && !isSingle) ? 'readonly' : '';
+          const lockedClass = (existing && !isSingle) ? 'bg-light' : '';
+
+          return `
+                        <tr>
+                            <td>${s.student_id}</td>
+                            <td>${s.name}</td>
+                            <td>
+                                <input type="number" 
+                                    name="marks_${s.id}" 
+                                    class="form-input form-input-sm marks-input ${lockedClass}" 
+                                    value="${markVal}" 
+                                    min="0" max="${maxMarks}" step="0.5" 
+                                    ${locked}
+                                    data-original="${markVal}"
+                                >
+                            </td>
+                            <td><span class="text-muted small">-</span></td>
+                            <td class="text-center">
+                                <input type="checkbox" 
+                                    name="absent_${s.id}" 
+                                    ${isAbsent ? 'checked' : ''} 
+                                    onchange="marksManager.handleAbsentToggle(this, '${s.id}')"
+                                    ${locked ? 'disabled' : ''}
+                                >
+                            </td>
+                        </tr>
+                    `;
+        }).join('');
+
+      } catch (e) {
+        console.error(e);
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Error: ${e.message}</td></tr>`;
+      }
+    },
+
+    handleAbsentToggle(cb, id) {
+      const inp = document.querySelector(`input[name="marks_${id}"]`);
+      if (cb.checked) {
+        inp.value = 0;
+        inp.disabled = true;
+        inp.style.backgroundColor = '#f8d7da';
+      } else {
+        inp.disabled = false;
+        inp.style.backgroundColor = '';
+        // Optional: restore original value logic if desired
+      }
+    },
+
+    toggleUnlock(cb) {
+      const inputs = document.querySelectorAll('.marks-input');
+      const absents = document.querySelectorAll('input[type="checkbox"][name^="absent_"]');
+
+      inputs.forEach(i => {
+        if (cb.checked) {
+          i.readOnly = false;
+          i.classList.remove('bg-light');
+        } else {
+          // Only lock if it has data-original value? Or generally lock all?
+          // Simplified: Lock all if unchecked
+          i.readOnly = true;
+          i.classList.add('bg-light');
+        }
+      });
+      absents.forEach(a => a.disabled = !cb.checked);
+    },
+
+    applyBulkMarks() {
+      const val = document.getElementById('bulkMarksInput').value;
+      if (!val) return;
+      document.querySelectorAll('.marks-input:not([disabled])').forEach(i => {
+        if (!i.readOnly) i.value = val;
+      });
+    },
+
+    markAllAbsent() {
+      document.querySelectorAll('input[type="checkbox"][name^="absent_"]:not([disabled])').forEach(cb => {
+        cb.checked = true;
+        const id = cb.name.split('_')[1];
+        this.handleAbsentToggle(cb, id);
+      });
+    },
+
+    async saveMarks() {
+      const inputs = document.querySelectorAll('.marks-input');
+      const maxMarks = document.getElementById('modalMaxMarksInput').value;
+      const marksList = [];
+
+      inputs.forEach(inp => {
+        const sid = inp.name.split('_')[1];
+        const absentCb = document.querySelector(`input[name="absent_${sid}"]`);
+
+        // Only send changed or valid data? 
+        // Currently backend handles upsert.
+        marksList.push({
+          student_id: parseInt(sid),
+          marks: inp.value,
+          is_absent: absentCb.checked,
+          remarks: document.getElementById('updateReason') ? document.getElementById('updateReason').value : ''
+        });
+      });
+
+      // Show Progress
+      const progressContainer = document.querySelector('.save-progress-container');
+      const actions = document.querySelector('.modal-actions');
+      actions.style.display = 'none';
+      progressContainer.style.display = 'block';
+
+      try {
+        const res = await fetch('/faculty/marks/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject_value: this.state.currentSubject,
+            assessment_type: this.state.currentAssessment,
+            assignment_number: (this.state.currentAssessment === 'assignment') ? document.getElementById('assignmentFilter').value : null,
+            max_marks: parseFloat(maxMarks),
+            marks: marksList
+          })
+        });
+
+        const resData = await res.json();
+
+        if (res.ok) {
+          alert("Marks saved successfully!");
+          window.location.reload();
+        } else {
+          alert("Error: " + (resData.error || "Failed to save"));
+        }
+      } catch (e) {
+        console.error(e);
+        alert("Error saving: " + e.message);
+      } finally {
+        progressContainer.style.display = 'none';
+        actions.style.display = 'flex';
+      }
+    },
+
+    exportMarks() {
+      const form = document.createElement('form');
+      form.method = 'POST';
+      form.action = '/faculty/marks/export';
+
+      const sub = document.createElement('input');
+      sub.type = 'hidden';
+      sub.name = 'subject_value';
+      sub.value = document.getElementById('subjectFilter').value;
+
+      if (!sub.value) { alert("Select a subject first."); return; }
+
+      form.appendChild(sub);
+      document.body.appendChild(form);
+      form.submit();
+      document.body.removeChild(form);
+    },
+
+    showTopScorers() {
+      if (!this.state.marksData || this.state.marksData.length === 0) {
+        alert("No marks data available to analyze.");
+        return;
+      }
+
+      // Sort by marks desc
+      const sorted = [...this.state.marksData].sort((a, b) => parseFloat(b.marks) - parseFloat(a.marks));
+      const top5 = sorted.slice(0, 5);
+
+      const tbody = document.getElementById('topScorersBody');
+      tbody.innerHTML = top5.map((s, i) => `
+        <tr style="${i === 0 ? 'background-color: #fff9c4;' : ''}">
+          <td style="text-align:center; font-weight:bold;">#${i + 1}</td>
+          <td>${s.student_name}</td>
+          <td style="font-weight:bold; color:var(--primary-color);">${s.marks}</td>
+          <td>${s.percentage}%</td>
+        </tr>
+      `).join('');
+
+      // Context text
+      const subText = document.getElementById('subjectFilter').selectedOptions[0].text;
+      const assText = document.getElementById('assessmentFilter').selectedOptions[0].text;
+      document.getElementById('topScorersContext').textContent = `${subText} • ${assText}`;
+
+      document.getElementById('topScorersModal').style.display = 'block';
+    },
+
+    async giveFullMarksForAllAssignments() {
+      // 1. Validation
+      if (!this.state.currentSubject || !this.state.currentAssessment) {
+        alert("Please select a Subject and Assessment first to identify the target group.");
+        return;
+      }
+
+      // 2. Confirmation
+      if (!confirm("Start 'Full Marks Assignment' process?\n\nThis will open the marks entry form and automatically fill the maximum marks for ALL students.\n\nYou will have a chance to review before saving.")) return;
+
+      // 3. Open Modal (awaited)
+      await this.openModal();
+
+      // 4. Get Max Marks
+      const maxMarks = document.getElementById('modalMaxMarksInput').value;
+      if (!maxMarks) return;
+
+      // 5. Simulate Typing / Filling
+      document.getElementById('bulkMarksInput').value = maxMarks;
+
+      // 6. Apply
+      this.applyBulkMarks();
+
+      // 7. Visual Feedback
+      setTimeout(() => {
+        alert("✅ Process Complete: Full Marks Applied.\n\nPlease review the table and click 'Save & Update' to commit changes.");
+      }, 300);
+    }
+  };
+
+  // Auto Init
+  document.addEventListener('DOMContentLoaded', () => {
+    marksManager.init();
+  });
+</script>
+{% endblock %}

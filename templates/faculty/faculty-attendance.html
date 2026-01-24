@@ -1,0 +1,1408 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Attendance | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  <!-- Sidebar -->
+  {% set active_page = 'attendance' %}
+  {% include 'includes/faculty_sidebar.html' %}
+
+  <!-- Main Content -->
+  <main class="main">
+    <header class="topbar">
+      <h2 style="font-size: 1.25rem; margin: 0; color: var(--text-primary);">Attendance</h2>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span
+            style="background: red; border-radius: 50%; width: 8px; height: 8px; position: absolute; top: 10px; right: 10px;"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div class="page-header">
+        <h1>Attendance Management</h1>
+        <div class="action-bar">
+          <button class="btn btn-primary" onclick="openAttendanceEntryModal()">
+            <span class="action-icon">➕</span> Mark Attendance
+          </button>
+          <button class="btn btn-secondary" onclick="exportAttendance()">
+            <span class="action-icon">📥</span> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <!-- Pending Attendance Section -->
+      {% if pending_classes %}
+      <div class="card" style="margin-bottom: 2rem; border-left: 4px solid var(--warning-color);">
+        <div style="padding: 1.5rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <h3 style="margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--warning-color);">
+              ⚠️ Pending Attendance
+              <span class="badge badge-warning" style="font-size: 0.7em;">{{ pending_classes|length }} Unmarked</span>
+            </h3>
+            <div class="btn-group" role="group">
+              <button type="button" class="btn btn-sm btn-outline-secondary active"
+                onclick="filterPending('all', this)">All</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="filterPending('Theory', this)">Theory</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary"
+                onclick="filterPending('Lab', this)">Lab</button>
+            </div>
+          </div>
+
+          <p class="text-muted" style="margin-bottom: 1.5rem;">The following classes from this semester have not been
+            marked yet.</p>
+
+          <div class="timeline-container">
+            {% for cls in pending_classes %}
+            <div class="timeline-item pending-item" data-type="{{ cls.subject_type }}" style="margin-bottom: 1rem;">
+              <!-- Reusing the dashboard timeline style for consistency -->
+              <div
+                style="display: grid; grid-template-columns: 85px 1fr 120px; gap: 1rem; align-items: center; background: #fff; border: 1px solid var(--border-color); border-radius: var(--radius-md); padding: 1rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+
+                <!-- Date/Time -->
+                <div style="text-align: center; border-right: 1px solid var(--border-color); padding-right: 1rem;">
+                  <div style="font-weight: 700; color: var(--text-primary);">{{ cls.date }}</div>
+                  <div style="font-size: 0.85rem; color: var(--text-muted);">{{ cls.start_time }}</div>
+                  <span class="badge {% if cls.subject_type == 'Lab' %}badge-info{% else %}badge-danger{% endif %}"
+                    style="margin-top: 4px; font-size: 0.7rem;">{{ cls.subject_type }}</span>
+                </div>
+
+                <!-- Details -->
+                <div>
+                  <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 0.25rem;">{{ cls.subject_name }}
+                  </div>
+                  <div
+                    style="font-size: 0.9rem; color: var(--text-secondary); display: flex; gap: 1rem; align-items: center;">
+                    <span>👥 {{ cls.branch }} Y{{ cls.year }} {{ cls.section }}</span>
+                    <span>📍 {{ cls.room }}</span>
+                  </div>
+                </div>
+
+                <!-- Action -->
+                <div style="text-align: right;">
+                  <button
+                    onclick="openModalForPending('{{ cls.offering_id }}', '{{ cls.date }}', '{{ cls.start_time }}'); return false;"
+                    class="btn btn-sm btn-primary" style="width: 100%;">
+                    Mark Now
+                  </button>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="card"
+        style="margin-bottom: 2rem; border-left: 4px solid var(--success-color); padding: 2rem; text-align: center;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎉</div>
+        <h3 style="color: var(--success-color); margin-bottom: 0.5rem;">All Caught Up!</h3>
+        <p class="text-muted">You have no pending attendance for this semester.</p>
+      </div>
+      {% endif %}
+
+      <script>
+        function openModalForPending(offeringId, date, time) {
+          // 1. Update Page Filters (Background Context)
+          const subjectFilter = document.getElementById('subjectFilter');
+          const dateFilter = document.getElementById('dateFilter');
+          if (subjectFilter) subjectFilter.value = offeringId;
+          if (dateFilter) dateFilter.value = date;
+
+          // Trigger loadAttendance for background view (optional but nice)
+          if (typeof loadAttendance === 'function') {
+            loadAttendance();
+          }
+
+          // 2. Open Modal & Pre-fill
+          openAttendanceEntryModal();
+
+          const modalSubject = document.getElementById('attendanceSubject');
+          const modalDate = document.getElementById('attendanceDate');
+
+          if (modalSubject) modalSubject.value = offeringId;
+          if (modalDate) modalDate.value = date;
+
+          // 3. Trigger Logic to Load Periods
+          // We must ensure handleSubjectChange completes before setting period
+          // Note: handleSubjectChange is async defined below
+          handleSubjectChange().then(() => {
+            const periodSelect = document.getElementById('attendancePeriod');
+
+            // Time Format Normalization
+            // Input 'time' might be "HH:MM:SS" or "HH:MM"
+            // Select options are "HH:MM"
+            let targetTime = time;
+            if (targetTime && targetTime.length > 5) {
+              targetTime = targetTime.substring(0, 5);
+            }
+
+            // Try to set value
+            if (periodSelect) {
+              periodSelect.value = targetTime;
+
+              // If successful match, trigger period change to load students path
+              if (periodSelect.value === targetTime) {
+                handlePeriodChange();
+              } else {
+                console.warn("Could not match period:", targetTime);
+                // Fallback: If not found, maybe select first? Or leave empty.
+              }
+            }
+          });
+        }
+      </script>
+
+
+      <!-- Filters -->
+      <div class="filters-card">
+        <div class="filter-group">
+          <label for="subjectFilter">Subject & Class</label>
+          <select id="subjectFilter" class="form-select" onchange="loadAttendance()">
+            <option value="">Select Subject & Class</option>
+            {% for offering in class_offerings %}
+            <option value="{{ offering.id }}">
+              {{ offering.subject.name }} ({{ offering.subject.code }}) - {{ offering.branch }} || Year {{ offering.year
+              }} || Semester {{ offering.semester }} || Section {{ offering.section }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="dateFilter">Date</label>
+          <input type="date" id="dateFilter" class="form-input" value="{{ today_date }}" onchange="loadAttendance()">
+        </div>
+        <div class="filter-group">
+          <label for="monthFilter">Month (Overview)</label>
+          <input type="month" id="monthFilter" class="form-input" onchange="loadMonthlyOverview()">
+        </div>
+      </div>
+
+      <!-- Daily Attendance View -->
+      <div id="dailyView" class="dashboard-card full-width" style="margin-top: 1.5rem;">
+        <div class="card-header">
+          <h3>Daily Attendance <span id="selectedDateDisplay" class="text-muted" style="font-size: 0.8em;"></span>
+          </h3>
+          <div id="attendanceStats" class="stats-inline" style="display: none;">
+            <span class="badge badge-info">Total: <span id="totalStudents">0</span></span>
+            <span class="badge badge-success">Present: <span id="presentCount">0</span></span>
+            <span class="badge badge-danger">Absent: <span id="absentCount">0</span></span>
+            <span class="badge badge-warning">Rate: <span id="attendanceRate">0%</span></span>
+          </div>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Time Slot</th>
+                <th>Status</th>
+                <th>Reason</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceTableBody">
+              <tr>
+                <td colspan="6" class="text-center">Select subject and date to view attendance</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Monthly Overview -->
+      <div id="monthlyOverview" class="dashboard-card full-width" style="margin-top: 1.5rem; display: none;">
+        <div class="card-header">
+          <h3>Monthly Overview</h3>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Total Classes</th>
+                <th>Present</th>
+                <th>Absent</th>
+                <th>%</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="monthlyOverviewBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Modal -->
+  <div id="notificationModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="toggleNotificationModal()">×</span>
+      <h2>Notifications History</h2>
+      <div class="notification-list" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+        {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement-item" style="padding: 15px 0; border-bottom: 1px solid var(--border-color);">
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px; color: var(--text-primary);">{{
+            ann.title }}</div>
+          <p class="text-muted" style="margin: 0 0 4px; font-size: 0.9rem;">{{ ann.content }}</p>
+          <div class="text-muted small" style="font-size: 0.8rem;">{{ ann.date }} • <span class="badge badge-info">{{
+              ann.priority|capitalize }}</span></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center">No notifications found.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleNotificationModal() {
+      const modal = document.getElementById('notificationModal');
+      if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+      } else {
+        modal.style.display = 'block';
+      }
+    }
+
+    // Bind bell click
+    const notificationBtn = document.querySelector('.notification-btn');
+    if (notificationBtn) {
+      notificationBtn.onclick = toggleNotificationModal;
+    }
+
+    // Close on outside click
+    window.onclick = function (event) {
+      const modal = document.getElementById('notificationModal');
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+      // Keep existing modal close logic
+      const attModal = document.getElementById('attendanceModal');
+      if (attModal && event.target == attModal) { hideAttendanceModal(); }
+      const editModal = document.getElementById('editAttendanceModal');
+      if (editModal && event.target == editModal) { hideEditAttendanceModal(); }
+    }
+  </script>
+</div>
+
+<!-- Mark Attendance Modal -->
+<div id="attendanceModal" class="modal">
+  <div class="modal-content" style="max-width: 900px;">
+    <span class="close-button" onclick="hideAttendanceModal()">×</span>
+    <h2>Mark Attendance</h2>
+    <form id="attendanceForm">
+      <div class="form-grid" style="grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="form-group">
+          <label for="attendanceSubject">Subject</label>
+          <select id="attendanceSubject" class="form-select" required onchange="handleSubjectChange()">
+            <option value="">Select Subject</option>
+            {% for offering in class_offerings %}
+            <option value="{{ offering.id }}">
+              {{ offering.subject.name }} ({{ offering.subject.code }}) - {{ offering.branch }} Y{{ offering.year }} S{{
+              offering.semester }} Sec {{ offering.section }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="attendanceDate">Date</label>
+          <input type="date" id="attendanceDate" class="form-input" value="{{ today_date }}" required
+            onchange="handleSubjectChange()">
+        </div>
+        <div class="form-group">
+          <label for="attendancePeriod">Period / Time</label>
+          <select id="attendancePeriod" class="form-select" required disabled onchange="handlePeriodChange()">
+            <option value="">Select Period</option>
+          </select>
+          <input type="hidden" id="attendanceTime">
+        </div>
+      </div>
+
+      <!-- Status & Reset Section -->
+      <div id="statusSection" style="margin-bottom: 1rem; display: none;">
+        <div class="alert alert-info" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <strong>Status: </strong> <span id="attendanceStatusText">Marked Attendance</span>
+          </div>
+          <div style="display: flex; gap: 10px;">
+            <button type="button" id="btnUpdateAttendance" class="btn btn-warning btn-sm" onclick="toggleUpdate()">
+              Update Attendance
+            </button>
+            <button type="button" id="btnResetAttendance" class="btn btn-danger btn-sm" onclick="triggerReset()">
+              Reset (Clear All)
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Reason for Update (Hidden by default) -->
+      <div id="updateReasonGroup" class="form-group" style="display: none; margin-bottom: 1rem;">
+        <label for="updateReason">Reason for Reset/Update <span class="text-danger">*</span></label>
+        <input type="text" id="updateReason" class="form-input" placeholder="e.g. Correction, Late Arrival, etc.">
+      </div>
+
+      <div id="attendanceGridSection" style="display: none;">
+        <div class="attendance-actions-bar" style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+          <button type="button" class="btn btn-success btn-sm" onclick="markAllPresent()">Mark All Present</button>
+          <span style="font-weight: bold; color: #28a745;">(<span id="presentCountVal">0</span>)</span>
+
+          <button type="button" class="btn btn-danger btn-sm" onclick="markAllAbsent()">Mark All Absent</button>
+          <span style="font-weight: bold; color: #dc3545;">(<span id="absentCountVal">0</span>)</span>
+        </div>
+        <div id="studentsAttendanceBody" class="student-attendance-grid">
+          <!-- Student buttons will be generated here -->
+        </div>
+      </div>
+
+      <!-- Verification Section -->
+      <div id="attendanceVerificationSection"
+        style="display: none; padding: 10px; background: #f9f9f9; border-radius: 6px;">
+        <h3 style="margin-top: 0; color: #333;">Review Attendance</h3>
+        <p class="text-muted" style="font-size: 0.9em; margin-bottom: 15px;">Please verify the following status before
+          saving.</p>
+
+        <div id="verificationList" style="max-height: 400px; overflow-y: auto;">
+          <!-- Verification content will be injected here -->
+        </div>
+      </div>
+
+      <div id="attendanceModalFooter">
+        <div class="form-actions" style="margin-top: 1.5rem;">
+          <button type="button" class="btn btn-secondary" onclick="hideAttendanceModal()">Cancel</button>
+
+          <!-- Grid View Buttons -->
+          <button type="button" id="btnReview" class="btn btn-primary" onclick="showVerification()">Review &
+            Save</button>
+
+          <!-- Verification View Buttons -->
+          <button type="button" id="btnBackToEdit" class="btn btn-secondary" style="display: none;"
+            onclick="backToEdit()">Back to Edit</button>
+          <button type="submit" id="btnConfirmSave" class="btn btn-success" style="display: none;">Confirm Save</button>
+        </div>
+
+        <div class="save-progress-container" style="display: none; margin-top: 10px;">
+          <div class="progress" style="height: 20px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;">
+            <div id="inlineProgressBar" class="progress-bar" role="progressbar"
+              style="width: 0%; height: 100%; background-color: #0d6efd; color: white; text-align: center; line-height: 20px; transition: width 0.2s ease;">
+              0%</div>
+          </div>
+          <div class="text-center mt-1" style="font-size: 0.85em; color: #6c757d;">Saving attendance...</div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Save Progress Modal -->
+<div id="saveProgressModal" class="modal" style="z-index: 2000;">
+  <div class="modal-content" style="max-width: 400px; text-align: center;">
+    <h3>Saving Data...</h3>
+    <div class="progress"
+      style="height: 25px; background-color: #e9ecef; border-radius: 5px; overflow: hidden; margin: 20px 0;">
+      <div id="saveProgressBar" class="progress-bar" role="progressbar"
+        style="width: 0%; height: 100%; background-color: #0d6efd; color: white; text-align: center; line-height: 25px; transition: width 0.3s ease;">
+        0%</div>
+    </div>
+    <p id="saveProgressText">Preparing...</p>
+  </div>
+</div>
+
+<!-- Edit Attendance Modal -->
+<div id="editAttendanceModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideEditAttendanceModal()">×</span>
+    <h2>Edit Attendance Record</h2>
+    <form id="editAttendanceForm">
+      <input type="hidden" id="editAttendanceRecordId">
+      <div class="form-group">
+        <label>Student</label>
+        <input type="text" id="editStudentName" class="form-input" readonly>
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <select id="editAttendanceStatus" class="form-select" required>
+          <option value="present">Present</option>
+          <option value="absent">Absent</option>
+        </select>
+      </div>
+      <div class="form-group" id="editReasonGroup">
+        <label>Reason for Update <span class="text-danger">*</span></label>
+        <input type="text" id="editAttendanceReason" class="form-input" placeholder="Reason for this change (Required)"
+          required>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideEditAttendanceModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<style>
+  .student-attendance-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding: 10px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+  }
+
+  .student-status-btn {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.2s;
+  }
+
+  .student-status-btn:hover {
+    background: var(--bg-tertiary);
+  }
+
+  .student-status-btn.status-present {
+    background-color: rgba(40, 167, 69, 0.1);
+    border-color: #28a745;
+  }
+
+  .student-status-btn.status-absent {
+    background-color: rgba(220, 53, 69, 0.1);
+    border-color: #dc3545;
+  }
+
+  .student-roll {
+    font-size: 0.85em;
+    color: var(--text-secondary);
+    font-weight: 600;
+  }
+
+  .student-name {
+    font-size: 0.9em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100px;
+  }
+
+  /* Existing record style */
+  .student-attendance-item.status-existing .student-status-btn {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background-color: var(--bg-tertiary);
+  }
+</style>
+
+<script>
+  // Global State
+  let currentStudents = [];
+
+  // --- Modal Management ---
+  function openAttendanceEntryModal() {
+    const modal = document.getElementById('attendanceModal');
+    const form = document.getElementById('attendanceForm');
+
+    // Reset Form
+    form.reset();
+    document.getElementById('attendancePeriod').innerHTML = '<option value="">Select Period</option>';
+    document.getElementById('attendancePeriod').disabled = true;
+
+    // Hide sections
+    document.getElementById('attendanceGridSection').style.display = 'none';
+    document.getElementById('attendanceVerificationSection').style.display = 'none';
+
+    // Reset View State to Grid (buttons etc.)
+    backToEdit();
+
+    // Set Date to Today and max to Today
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('attendanceDate');
+    dateInput.value = today;
+    dateInput.max = today;
+
+    modal.style.display = 'flex';
+  }
+
+  function hideAttendanceModal() {
+    document.getElementById('attendanceModal').style.display = 'none';
+  }
+
+  function hideEditAttendanceModal() {
+    document.getElementById('editAttendanceModal').style.display = 'none';
+  }
+
+  // --- Attendance Entry Logic ---
+
+  async function handleSubjectChange(overrideSubjectId, overrideDate) {
+    const subjectEl = document.getElementById('attendanceSubject');
+    const dateEl = document.getElementById('attendanceDate');
+
+    // Use override values if provided, otherwise fallback to DOM
+    const subjectVal = overrideSubjectId || (subjectEl ? subjectEl.value : null);
+    const dateVal = overrideDate || (dateEl ? dateEl.value : null);
+
+    // Ensure DOM is in sync if overrides were used (for consistency)
+    if (overrideSubjectId && subjectEl) subjectEl.value = overrideSubjectId;
+    if (overrideDate && dateEl) dateEl.value = overrideDate;
+
+    const periodSelect = document.getElementById('attendancePeriod');
+
+    // Reset Period Dropdown
+    if (periodSelect) {
+      periodSelect.innerHTML = '<option value="">Loading...</option>';
+      periodSelect.disabled = true;
+    }
+    const gridSection = document.getElementById('attendanceGridSection');
+    if (gridSection) gridSection.style.display = 'none';
+
+    if (!subjectVal || !dateVal) {
+      if (periodSelect) periodSelect.innerHTML = '<option value="">Select Period</option>';
+      return;
+    }
+
+    try {
+      // Create form data or JSON
+      const formData = new FormData();
+      formData.append('offering_id', subjectVal);
+      formData.append('date', dateVal);
+
+      // We'll use the proper request model structure if needed, but existing code used... fetch?
+      // existing code used: fetch("{{ url_for('faculty.get_periods') }}", ... body: JSON.stringify({ offering_id: ..., date: ... })
+
+      const response = await fetch("{{ url_for('faculty.get_periods') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offering_id: subjectVal, date: dateVal })
+      });
+      const data = await response.json();
+
+      periodSelect.innerHTML = ''; // Clear again to be safe
+
+      let selectedTime = '';
+
+      if (data.periods && data.periods.length > 0) {
+        // Populate with actual scheduled periods
+        data.periods.forEach(p => {
+          const option = document.createElement('option');
+          option.value = p.start_time;
+          let label = `${p.start_time} - ${p.end_time} (${p.type})`;
+
+          if (p.is_future) {
+            label += " - Not Started";
+            option.disabled = true;
+          }
+
+          option.textContent = label;
+          periodSelect.appendChild(option);
+        });
+
+        // Auto-select logic: Pick first ACTIVE period
+        const firstActive = data.periods.find(p => !p.is_future);
+        if (firstActive) {
+          selectedTime = firstActive.start_time;
+        } else {
+          // If all are future, maybe select nothing
+          selectedTime = "";
+        }
+      } else {
+        const option = document.createElement('option');
+        option.value = "";
+        option.textContent = "No classes scheduled for this date";
+        periodSelect.appendChild(option);
+      }
+
+      if (selectedTime) {
+        periodSelect.disabled = false;
+        periodSelect.value = selectedTime;
+        // Trigger student load immediately
+        handlePeriodChange();
+      } else {
+        periodSelect.disabled = true; // Keep disabled if no valid class
+        document.getElementById('attendanceGridSection').style.display = 'none';
+      }
+
+    } catch (e) {
+      console.error("Error fetching periods:", e);
+      alert("Error loading periods. Please try again.");
+    }
+  }
+
+  async function handlePeriodChange() {
+    const subjectVal = document.getElementById('attendanceSubject').value;
+    const dateVal = document.getElementById('attendanceDate').value;
+    const timeVal = document.getElementById('attendancePeriod').value;
+
+    if (!subjectVal || !dateVal || !timeVal) {
+      document.getElementById('attendanceGridSection').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('attendanceTime').value = timeVal;
+
+    try {
+      // Fetch Students & Existing Attendance Status
+      const response = await fetch("{{ url_for('faculty.get_students_for_attendance') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offering_id: subjectVal, date: dateVal, time: timeVal })
+      });
+      const data = await response.json();
+
+      if (data.students) {
+        currentStudents = data.students;
+        const isFrozen = data.is_frozen || false; // Backend flag
+        const validation = data.semester_validation || { allowed: true, message: "" };
+
+        renderStudentGrid(data.students, data.existing_attendance || [], isFrozen);
+
+        // Handle Freeze State
+        const statusSection = document.getElementById('statusSection');
+        const updateReasonGroup = document.getElementById('updateReasonGroup');
+        const btnUpdate = document.getElementById('btnUpdateAttendance');
+        const btnReset = document.getElementById('btnResetAttendance');
+        const attStatusText = document.getElementById('attendanceStatusText');
+
+        // Reset display
+        statusSection.style.display = 'block';
+        updateReasonGroup.style.display = 'none';
+
+        if (!validation.allowed) {
+          // BLOCKED by Semester Validation
+          attStatusText.innerHTML = `<span class="text-danger">⛔ ${validation.message}</span>`;
+
+          btnUpdate.style.display = 'none';
+          btnReset.style.display = 'none';
+          setGridDisabled(true);
+
+          // Also hide bulk actions via CSS or specific logic in setGridDisabled?
+          // setGridDisabled handles buttons. We should also enforce it stays disabled.
+          // We might want to remove bulk buttons or just rely on setGridDisabled(true).
+        } else if (isFrozen) {
+          attStatusText.textContent = "Marked Attendance";
+
+          // Show buttons
+          btnUpdate.style.display = 'inline-block';
+          btnUpdate.textContent = "Update Attendance";
+          btnUpdate.classList.remove('btn-secondary');
+          btnUpdate.classList.add('btn-warning');
+          btnUpdate.disabled = false;
+
+          btnReset.style.display = 'inline-block';
+          btnReset.textContent = "Reset (Clear All)";
+          btnReset.disabled = false;
+
+          // Default state: Frozen
+          setGridDisabled(true);
+        } else {
+          // Not Marked yet
+          attStatusText.textContent = "Not Marked (New Entry)";
+
+          btnUpdate.style.display = 'none';
+          btnReset.style.display = 'none';
+
+          setGridDisabled(false);
+        }
+
+        document.getElementById('attendanceGridSection').style.display = 'block';
+
+        // Reset View state
+        backToEdit();
+      }
+    } catch (e) {
+      console.error("Error fetching students:", e);
+      alert("Error loading student list.");
+    }
+  }
+
+  // --- Actions ---
+
+  // 1. Update/Edit: Just unlock the grid
+  function toggleUpdate() {
+    const btnUpdate = document.getElementById('btnUpdateAttendance');
+    const btnReset = document.getElementById('btnResetAttendance');
+    const reasonGroup = document.getElementById('updateReasonGroup');
+    const updateReasonInput = document.getElementById('updateReason');
+
+    const isEditing = btnUpdate.textContent === "Cancel Update";
+
+    if (!isEditing) {
+      // Start Editing
+      setGridDisabled(false);
+      reasonGroup.style.display = 'block';
+      updateReasonInput.required = true;
+
+      btnUpdate.textContent = "Cancel Update";
+      btnUpdate.classList.remove('btn-warning');
+      btnUpdate.classList.add('btn-secondary');
+
+      btnReset.disabled = true; // Disable reset while editing
+    } else {
+      // Cancel Editing
+      setGridDisabled(true);
+      reasonGroup.style.display = 'none';
+      updateReasonInput.required = false;
+      updateReasonInput.value = '';
+
+      // Revert visual state
+      btnUpdate.textContent = "Update Attendance";
+      btnUpdate.classList.remove('btn-secondary');
+      btnUpdate.classList.add('btn-warning');
+
+      btnReset.disabled = false;
+
+      // Reload data
+      handlePeriodChange();
+    }
+  }
+
+  // 2. Reset: Clear all local statuses to 'not_marked'
+  function triggerReset() {
+    if (!confirm("Are you sure you want to RESET attendance? This will clear all current marks and you will start fresh.")) {
+      return;
+    }
+
+    const btnUpdate = document.getElementById('btnUpdateAttendance');
+    const btnReset = document.getElementById('btnResetAttendance');
+    const reasonGroup = document.getElementById('updateReasonGroup');
+    const updateReasonInput = document.getElementById('updateReason');
+
+    // Perform Clear
+    document.querySelectorAll('.student-attendance-item').forEach(item => {
+      updateItemStatus(item, 'not_marked', '');
+    });
+
+    // Unlock Grid
+    setGridDisabled(false);
+
+    // Show Reason
+    reasonGroup.style.display = 'block';
+    updateReasonInput.required = true;
+    updateReasonInput.placeholder = "Reason for Resetting (Required)";
+
+    // Update Button States
+    btnUpdate.style.display = 'none'; // distinct mode
+
+    btnReset.textContent = "Cancel Reset";
+    btnReset.classList.remove('btn-danger'); // was danger in HTML
+    btnReset.classList.add('btn-secondary');
+
+    // Make reset button cancel logic mapping
+    btnReset.onclick = function () {
+      // Restore original handler and reload
+      handlePeriodChange();
+      // Note: handlePeriodChange will reset the onclick handler back to triggerReset because it re-renders/resets state or at least we should rely on it refreshing the state. 
+      // Actually, handlePeriodChange doesn't reset 'onclick' of static elements in HTML.
+      // So we need to be careful. Better to have a 'isResetting' flag or check text content in triggerReset? 
+      // Let's rely on handlePeriodChange re-initializing the whole view which might be safer or just reload.
+      // Wait, handlePeriodChange updates DOM elements but doesn't replace the button itself.
+      // So we should manually reset onclick here or logic inside triggerReset.
+      btnReset.onclick = triggerReset;
+    };
+  }
+
+  function setGridDisabled(disabled) {
+    const btns = document.querySelectorAll('.student-status-btn');
+    btns.forEach(btn => {
+      btn.disabled = disabled;
+      btn.style.opacity = disabled ? '0.6' : '1';
+      btn.style.cursor = disabled ? 'not-allowed' : 'pointer';
+    });
+
+    // Also disable Bulk actions
+    const bulkBtns = document.querySelectorAll('.attendance-actions-bar button');
+    bulkBtns.forEach(btn => btn.disabled = disabled);
+  }
+
+  function updateAttendanceCounts() {
+    let present = 0;
+    let absent = 0;
+    // Scoped selector to ensure we count only visible grid items
+    const items = document.querySelectorAll('#studentsAttendanceBody .student-attendance-item');
+    console.log("Total items found in grid:", items.length);
+
+    items.forEach(item => {
+      const status = item.dataset.status;
+      // console.log("Item status:", status);
+      if (status && status.trim().toLowerCase() === 'present') present++;
+      else if (status && status.trim().toLowerCase() === 'absent') absent++;
+    });
+
+    console.log("Counts:", present, absent);
+
+    const pEl = document.getElementById('presentCountVal');
+    const aEl = document.getElementById('absentCountVal');
+
+    if (pEl) pEl.innerText = present;
+    else console.error("presentCountVal element not found");
+
+    if (aEl) aEl.innerText = absent;
+    else console.error("absentCountVal element not found");
+  }
+
+  function renderStudentGrid(students, existingAttendance, isFrozen) {
+    const grid = document.getElementById('studentsAttendanceBody');
+    // Map existing records for quick lookup
+    const existingMap = new Map(existingAttendance.map(a => [a.student_id, a]));
+
+    grid.innerHTML = students.map(student => {
+      const record = existingMap.get(student.id);
+
+      // Determine initial status (default 'present' if new? No, 'not_marked' is safer)
+      // Actually, standard practice is often default Present. 
+      // User current logic uses 'not_marked' unless user clicks 'Mark All Present'.
+      const status = record ? record.status : 'not_marked';
+
+      const isExisting = record ? 'status-existing' : ''; // Visual indicator only
+
+      let indicator = '';
+      if (status === 'present') indicator = '✅';
+      else if (status === 'absent') indicator = '❌';
+
+      return `
+        <div class="student-attendance-item ${isExisting}" 
+             data-student-id="${student.id}" 
+             data-status="${status}">
+            <button type="button" class="student-status-btn status-${status}" 
+                    onclick="toggleStudentStatus(${student.id})"
+                    title="${isExisting ? 'Update Existing Record' : 'Mark Attendance'}">
+                <span class="student-roll">${student.student_id}</span>
+                <span class="student-name" title="${student.name}">${student.name}</span>
+                <span class="status-indicator">${indicator}</span>
+            </button>
+        </div>
+      `;
+    }).join('');
+
+    updateAttendanceCounts(); // Initial count
+  }
+
+  function toggleStudentStatus(studentId) {
+    const item = document.querySelector(`.student-attendance-item[data-student-id="${studentId}"]`);
+    if (!item) return;
+
+    const currentStatus = item.dataset.status;
+    let newStatus = 'not_marked';
+    let indicator = '';
+
+    // Cycle strictly: Not Marked -> Present -> Absent -> Present
+    if (currentStatus === 'not_marked') {
+      newStatus = 'present';
+      indicator = '✅';
+    } else if (currentStatus === 'present') {
+      newStatus = 'absent';
+      indicator = '❌';
+    } else {
+      // If absent (or anything else), go to Present
+      newStatus = 'present';
+      indicator = '✅';
+    }
+
+    // Update DOM State
+    item.dataset.status = newStatus;
+    const btn = item.querySelector('.student-status-btn');
+    btn.className = `student-status-btn status-${newStatus}`;
+    btn.querySelector('.status-indicator').textContent = indicator;
+
+    updateAttendanceCounts();
+  }
+
+  // Bulk Actions
+  function markAllPresent() {
+    document.querySelectorAll('.student-attendance-item').forEach(item => {
+      updateItemStatus(item, 'present', '✅');
+    });
+    updateAttendanceCounts();
+  }
+
+  function markAllAbsent() {
+    document.querySelectorAll('.student-attendance-item').forEach(item => {
+      updateItemStatus(item, 'absent', '❌');
+    });
+    updateAttendanceCounts();
+  }
+
+  function updateItemStatus(item, status, indicator) {
+    item.dataset.status = status;
+    const btn = item.querySelector('.student-status-btn');
+    btn.className = `student-status-btn status-${status}`;
+    btn.querySelector('.status-indicator').textContent = indicator;
+  }
+
+  // --- Submissions ---
+
+  // Save/Update Attendance
+  // Verify first, then Submit relative to the form
+  document.getElementById('attendanceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await confirmSave();
+  });
+
+  async function confirmSave() {
+    const subjectVal = document.getElementById('attendanceSubject').value;
+    const dateVal = document.getElementById('attendanceDate').value;
+    const timeVal = document.getElementById('attendanceTime').value;
+    const updateReason = document.getElementById('updateReason').value;
+
+    // Collect Data
+    const attendanceData = [];
+    document.querySelectorAll('.student-attendance-item').forEach(item => {
+      const status = item.dataset.status;
+      // Send ALL statuses, including 'not_marked', so backend can handle deletions
+      attendanceData.push({
+        student_id: parseInt(item.dataset.studentId),
+        status: status
+      });
+    });
+
+    // Switch to Inline Progress
+    const footer = document.getElementById('attendanceModalFooter');
+    const actionsDiv = footer.querySelector('.form-actions');
+    const progressDiv = footer.querySelector('.save-progress-container');
+    const progressBar = document.getElementById('inlineProgressBar');
+
+    actionsDiv.style.display = 'none';
+    progressDiv.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.innerText = '0%';
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      if (progress < 90) {
+        progress += Math.floor(Math.random() * 10) + 5;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = `${progress}%`;
+        progressBar.innerText = `${progress}%`;
+      }
+    }, 200);
+
+    try {
+      const response = await fetch("{{ url_for('faculty.save_attendance') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          offering_id: subjectVal,
+          date: dateVal,
+          time: timeVal,
+          attendance: attendanceData,
+          update_reason: updateReason
+        })
+      });
+
+      const result = await response.json();
+
+      clearInterval(interval);
+      progressBar.style.width = '100%';
+      progressBar.innerText = '100%';
+
+      setTimeout(() => {
+        // Reset UI
+        actionsDiv.style.display = 'block';
+        progressDiv.style.display = 'none';
+
+        if (response.ok) {
+          // Success
+          hideAttendanceModal();
+          // loadAttendance(); // Old logic
+          window.location.reload(); // Refresh page as requested
+        } else {
+          // Show specific error from backend (e.g. Semester validation)
+          alert(result.error || "Unknown error occurred while saving.");
+        }
+      }, 500);
+
+    } catch (e) {
+      clearInterval(interval);
+      actionsDiv.style.display = 'block';
+      progressDiv.style.display = 'none';
+      console.error("Save Error:", e);
+      alert("Failed to save attendance. " + e.message);
+    }
+  }
+
+  function showVerification() {
+    const subjectVal = document.getElementById('attendanceSubject').value;
+    const dateVal = document.getElementById('attendanceDate').value;
+    const timeVal = document.getElementById('attendancePeriod').value;
+    const updateReason = document.getElementById('updateReason').value;
+
+    const reasonGroup = document.getElementById('updateReasonGroup');
+    // Check if we are in "Update" mode (reason field is visible)
+    const isUpdating = reasonGroup && reasonGroup.style.display !== 'none';
+
+    if (isUpdating && !updateReason.trim()) {
+      alert("Please provide a reason for the update.");
+      return;
+    }
+
+    if (!subjectVal || !dateVal || !timeVal) {
+      alert("Please select Subject, Date and Period.");
+      return;
+    }
+
+    // Collect Data
+    const absentList = [];
+    const presentList = [];
+    let hasMarks = false;
+
+    document.querySelectorAll('.student-attendance-item').forEach(item => {
+      const status = item.dataset.status;
+      const name = item.querySelector('.student-name').textContent;
+      const sid = item.querySelector('.student-roll').textContent;
+
+      if (status === 'absent') {
+        absentList.push({ name, sid });
+        hasMarks = true;
+      } else if (status === 'present') {
+        presentList.push({ name, sid });
+        hasMarks = true;
+      }
+    });
+
+    if (!hasMarks) {
+      alert("Please mark at least one student.");
+      return;
+    }
+
+    // Render Verification
+    const container = document.getElementById('verificationList');
+    container.innerHTML = '';
+
+    // Absentees first
+    if (absentList.length > 0) {
+      const absGroup = document.createElement('div');
+      absGroup.innerHTML = `<h4 style="color: #dc3545; border-bottom: 2px solid #dc3545; padding-bottom: 5px; margin-top:0;">🛑 Absent (${absentList.length})</h4>`;
+      const ul = document.createElement('ul');
+      absentList.forEach(s => {
+        const li = document.createElement('li');
+        li.textContent = `${s.sid} - ${s.name}`;
+        ul.appendChild(li);
+      });
+      absGroup.appendChild(ul);
+      container.appendChild(absGroup);
+    } else {
+      container.innerHTML += `<h4 style="color: #dc3545; opacity: 0.5;">No Absentees</h4>`;
+    }
+
+    // Present next
+    if (presentList.length > 0) {
+      const presGroup = document.createElement('div');
+      presGroup.style.marginTop = '20px';
+      presGroup.innerHTML = `<h4 style="color: #28a745; border-bottom: 2px solid #28a745; padding-bottom: 5px;">✅ Present (${presentList.length})</h4>`;
+      const ul = document.createElement('ul');
+      presentList.forEach(s => {
+        const li = document.createElement('li');
+        li.textContent = `${s.sid} - ${s.name}`;
+        ul.appendChild(li);
+      });
+      presGroup.appendChild(ul);
+      container.appendChild(presGroup);
+    }
+
+    // Toggle Views
+    document.getElementById('attendanceGridSection').style.display = 'none';
+    document.getElementById('attendanceVerificationSection').style.display = 'block';
+
+    // Toggle Buttons
+    document.getElementById('btnReview').style.display = 'none';
+    document.getElementById('btnBackToEdit').style.display = 'inline-block';
+    document.getElementById('btnConfirmSave').style.display = 'inline-block';
+  }
+
+  function backToEdit() {
+    // Toggle Views
+    document.getElementById('attendanceGridSection').style.display = 'block';
+    document.getElementById('attendanceVerificationSection').style.display = 'none';
+
+    // Toggle Buttons
+    document.getElementById('btnReview').style.display = 'inline-block';
+    document.getElementById('btnBackToEdit').style.display = 'none';
+    document.getElementById('btnConfirmSave').style.display = 'none';
+  }
+
+  // --- View & Edit Logic ---
+
+  async function loadAttendance() {
+    const subjectVal = document.getElementById('subjectFilter').value;
+    const dateVal = document.getElementById('dateFilter').value;
+
+    if (!subjectVal || !dateVal) return;
+
+    document.getElementById('selectedDateDisplay').textContent = `for ${dateVal}`;
+
+    try {
+      const response = await fetch("{{ url_for('faculty.fetch_attendance') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offering_id: subjectVal, date: dateVal })
+      });
+      const data = await response.json();
+
+      renderMainTable(data.records);
+      updateStats(data.stats);
+      loadMonthlyOverview();
+    } catch (e) {
+      console.error("Load Error:", e);
+    }
+  }
+
+  function renderMainTable(records) {
+    const tbody = document.getElementById('attendanceTableBody');
+    if (!records || records.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center">No attendance records found for this date.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = records.map(r => `
+      <tr>
+        <td>${r.student_id_display}</td>
+        <td>${r.student_name}</td>
+        <td>${r.class_time}</td>
+        <td><span class="badge badge-${r.status === 'present' ? 'success' : 'danger'}">${r.status}</span></td>
+        <td>${r.reason || '-'}</td>
+        <td>
+          <button class="btn-icon" onclick="openEditModal(${r.id}, '${r.student_name}', '${r.status}', '${r.reason || ''}')" title="Edit Record">✏️</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function updateStats(stats) {
+    if (!stats) return;
+    document.getElementById('attendanceStats').style.display = 'inline-flex';
+    document.getElementById('totalStudents').textContent = stats.total;
+    document.getElementById('presentCount').textContent = stats.present;
+    document.getElementById('absentCount').textContent = stats.absent;
+    document.getElementById('attendanceRate').textContent = stats.rate + '%';
+  }
+
+  // --- Edit Single Record Modal ---
+
+  function openEditModal(id, name, status, reason) {
+    document.getElementById('editAttendanceModal').style.display = 'flex';
+    document.getElementById('editAttendanceRecordId').value = id;
+    document.getElementById('editStudentName').value = name;
+    document.getElementById('editAttendanceStatus').value = status;
+    document.getElementById('editAttendanceReason').value = ''; // Clear previous reason to force new entry? or keep it? 
+    // User wants to know why it is CHANGED, so usually a new reason is needed. 
+    // If we keep old reason, they might not update it. Let's clear it or keep it depending on UX.
+    // Given "why they have changed", implies a new reason for this specific action.
+    // I will clear it to force them to type why they are editing now.
+    document.getElementById('editAttendanceReason').value = '';
+  }
+
+  // Removed toggleEditReasonField as it is always required now
+
+  // Update Single Record
+  document.getElementById('editAttendanceForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const id = document.getElementById('editAttendanceRecordId').value;
+    const status = document.getElementById('editAttendanceStatus').value;
+    const reason = document.getElementById('editAttendanceReason').value;
+
+    try {
+      const response = await fetch("{{ url_for('faculty.update_attendance_record') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status, reason })
+      });
+
+      if (response.ok) {
+        alert("Record updated successfully.");
+        hideEditAttendanceModal();
+        loadAttendance();
+      } else {
+        alert("Failed to update record.");
+      }
+    } catch (e) {
+      alert("Error updating record.");
+    }
+  });
+
+  // --- Monthly Stats ---
+
+  async function loadMonthlyOverview() {
+    const subjectVal = document.getElementById('subjectFilter').value;
+    const monthVal = document.getElementById('monthFilter').value;
+
+    if (!subjectVal || !monthVal) {
+      document.getElementById('monthlyOverview').style.display = 'none';
+      return;
+    }
+
+    try {
+      const response = await fetch("{{ url_for('faculty.monthly_stats') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ offering_id: subjectVal, month: monthVal })
+      });
+      const data = await response.json();
+
+      const tbody = document.getElementById('monthlyOverviewBody');
+      tbody.innerHTML = data.stats.map(s => `
+        <tr>
+          <td>${s.student_id}</td>
+          <td>${s.name}</td>
+          <td>${s.total}</td>
+          <td>${s.present}</td>
+          <td>${s.absent}</td>
+          <td>${s.percentage}%</td>
+          <td>
+            <span class="badge badge-${s.percentage >= 75 ? 'success' : (s.percentage >= 60 ? 'warning' : 'danger')}">
+              ${s.percentage >= 75 ? 'Good' : (s.percentage >= 60 ? 'Average' : 'Poor')}
+            </span>
+          </td>
+        </tr>
+      `).join('');
+      document.getElementById('monthlyOverview').style.display = 'block';
+    } catch (e) {
+      console.error("Monthly Stats Error:", e);
+    }
+  }
+
+  // --- Export ---
+
+  function exportAttendance() {
+    const subjectVal = document.getElementById('subjectFilter').value;
+    const dateVal = document.getElementById('dateFilter').value;
+    const monthVal = document.getElementById('monthFilter').value;
+
+    if (!subjectVal) {
+      alert("Please select a subject first.");
+      return;
+    }
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{{ url_for('faculty.export_attendance') }}";
+
+    const subjectInput = document.createElement('input');
+    subjectInput.type = 'hidden';
+    subjectInput.name = 'offering_id';
+    subjectInput.value = subjectVal;
+    form.appendChild(subjectInput);
+
+    if (dateVal) {
+      const dateInput = document.createElement('input');
+      dateInput.type = 'hidden';
+      dateInput.name = 'date';
+      dateInput.value = dateVal;
+      form.appendChild(dateInput);
+    }
+    if (monthVal) {
+      const monthInput = document.createElement('input');
+      monthInput.type = 'hidden';
+      monthInput.name = 'month';
+      monthInput.value = monthVal;
+      form.appendChild(monthInput);
+    }
+
+    document.body.appendChild(form);
+    form.submit();
+    document.body.removeChild(form);
+  }
+
+  // --- Pending Attendance Filter ---
+  function filterPending(type, btn) {
+    // 1. Update UI (Buttons)
+    const btnGroup = btn.parentElement;
+    const buttons = btnGroup.querySelectorAll('.btn');
+    buttons.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    // 2. Filter Items
+    const items = document.querySelectorAll('.pending-item');
+    items.forEach(item => {
+      const itemType = item.getAttribute('data-type');
+      if (type === 'all' || itemType === type) {
+        item.style.display = 'block';
+      } else {
+        item.style.display = 'none';
+      }
+    });
+  }
+
+  // --- Auto-Open Modal on Deep Link ---
+  window.addEventListener('DOMContentLoaded', async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const offeringId = urlParams.get('offering_id');
+    const date = urlParams.get('date');
+    const time = urlParams.get('time');
+
+    if (offeringId && date && time) {
+      openAttendanceEntryModal();
+
+      // Pre-fill values
+      const subjectSelect = document.getElementById('attendanceSubject');
+      const dateInput = document.getElementById('attendanceDate');
+
+      if (subjectSelect && dateInput) {
+        subjectSelect.value = offeringId;
+        dateInput.value = date;
+
+        // Trigger period fetch (requires await or manually calling logic)
+        // Reuse existing function but need to ensure it handles the pre-value
+        await handleSubjectChange();
+
+        // Now set period
+        const periodSelect = document.getElementById('attendancePeriod');
+        if (periodSelect) {
+          periodSelect.value = time;
+          // Trigger load students
+          handlePeriodChange();
+        }
+      }
+    }
+  });
+  // --- URL Param Handling (Smart Redirect) ---
+  document.addEventListener('DOMContentLoaded', function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const offeringId = urlParams.get('offering_id');
+
+    if (offeringId) {
+      // 1. Set Main Filter
+      const subjectFilter = document.getElementById('subjectFilter');
+      if (subjectFilter) {
+        subjectFilter.value = offeringId;
+        // Trigger change to load data
+        if (typeof loadAttendance === 'function') loadAttendance();
+      }
+
+      // 2. Open Modal and set its filter
+      openAttendanceEntryModal();
+      const modalSubject = document.getElementById('attendanceSubject');
+      if (modalSubject) {
+        modalSubject.value = offeringId;
+        // Trigger subject change to load periods (async)
+        if (typeof handleSubjectChange === 'function') handleSubjectChange();
+      }
+
+      // Clean URL to prevent staying in this state on refresh? 
+      // optional: window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  });
+
+  // Call loadAttendance on init if filter is pre-set (or just generally)
+  // loadAttendance(); 
+</script>
+{% endblock %}

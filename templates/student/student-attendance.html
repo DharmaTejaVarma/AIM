@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+
+{% block title %}My Attendance - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+    {% set active_page = 'attendance' %}
+    {% include 'includes/student_sidebar.html' %}
+
+    <main class="main">
+        <header class="topbar">
+            <div class="header-title">
+                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">My Attendance
+                </h2>
+            </div>
+            <div class="user-area">
+                <button class="notification-btn">🔔</button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div class="page-header">
+                <h1>My Attendance</h1>
+                <p class="page-subtitle">Track your daily and subject-wise attendance</p>
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card stat-card--green">
+                    <div class="stat-header">
+                        <div class="stat-label">Overall Attendance</div>
+                        <div class="stat-icon">✅</div>
+                    </div>
+                    <div class="stat-value" id="overallAttendance">--%</div>
+                    <div class="stat-subtext">Cumulative average</div>
+                </div>
+                <div class="stat-card stat-card--blue">
+                    <div class="stat-header">
+                        <div class="stat-label">Shortage Alert</div>
+                        <div class="stat-icon">⚠️</div>
+                    </div>
+                    <div class="stat-value" id="shortageCount">--</div>
+                    <div class="stat-subtext">Subjects < 75%</div>
+                    </div>
+                </div>
+
+
+                <!-- Subject-wise Attendance -->
+                <div class="dashboard-card full-width">
+                    <h3>Subject-wise Breakup</h3>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Subject</th>
+                                    <th>Conducted</th>
+                                    <th>Attended</th>
+                                    <th>Percentage</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody">
+                                <!-- Populated by JS -->
+                                <tr>
+                                    <td colspan="5" class="text-center">Loading...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Recent History (Optional/Placeholder) -->
+                <!-- <div class="dashboard-card full-width" style="margin-top: 20px;">
+                <h3>Recent Activity</h3>
+                ...
+            </div> -->
+
+        </section>
+    </main>
+</div>
+
+<!-- Core Scripts -->
+<script src="/static/js/database.js"></script>
+<script src="/static/js/auth.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Fetch Attendance Data
+        // Endpoint: student.fetch_attendance_data (assuming it exists or student.dashboard data can be reused)
+        // Since we don't know if specific endpoint exists, we try to fetch dashboard data or similar
+        // Actually, student-dashboard.html uses 'todays_classes' and 'subject_attendance' passed from backend.
+        // It does not use AJAX for attendance list usually. 
+        // But let's assume we can fetch it or render it server side.
+        // If this page is server-side rendered, we need the logic in backend.
+
+        // Strategy: Use client-side fetch if available, or placeholder + alert.
+        // Since I can't edit backend easily to add route, I will use the fetch_dashboard_data route if available?
+        // Or assume the route `attendance` renders this template with variables.
+
+        // For now, I'll put a placeholder script that tries to populate from a hypothetical endpoint
+        // or just displays "No data" if variables not found.
+
+        // Ideally we should use Jinja2 if the variables are passed. 
+        // student-dashboard.html uses {{ subject_attendance }}.
+        // If this page is rendered by backend, it hopefully receives similar data.
+
+        // Assuming we are building a robust frontend:
+        const tbody = document.getElementById('attendanceTableBody');
+        try {
+            const response = await fetch("{{ url_for('student.fetch_attendance_data') }}", {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            if (response.ok) {
+                const data = await response.json();
+
+                // data structure: { stats: {overall, total, present, absent}, subject_wise: [...], logs: [...] }
+                document.getElementById('overallAttendance').textContent = (data.stats.overall || 0) + '%';
+
+                const subjects = data.subject_wise || [];
+                let shortage = 0;
+
+                if (subjects.length > 0) {
+                    console.log("Attendance Data:", subjects); // Debug log
+                    tbody.innerHTML = subjects.map(s => {
+                        const pct = s.percentage;
+                        if (pct < 75) shortage++;
+
+                        // Fallback if subject_id is missing
+                        const link = s.subject_id ? `<a href="/student/attendance/subject/${s.subject_id}" style="text-decoration:none; color:inherit; border-bottom:1px dotted #999;">${s.subject_name} ↗</a>` : s.subject_name;
+
+                        return `
+                            <tr>
+                                <td>
+                                    <div style="font-weight:600;">
+                                        ${link}
+                                    </div>
+                                    <div class="text-muted small">${s.subject_code}</div>
+                                </td>
+                                <td>${s.total}</td>
+                                <td>${s.present}</td>
+                                <td>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <div class="progress-bar" style="width: 100px; height: 6px; background: rgba(0,0,0,0.05); border-radius: 3px; overflow:hidden;">
+                                            <div style="width:${pct}%; height:100%; background: ${pct < 75 ? 'var(--error-color)' : 'var(--success-color)'};"></div>
+                                        </div>
+                                        <span style="font-weight:600; min-width: 45px;">${pct}%</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge ${pct < 75 ? 'badge-danger' : 'badge-success'}">
+                                        ${pct < 75 ? 'Shortage' : 'Good'}
+                                    </span>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="text-center">No attendance data found.</td></tr>';
+                }
+
+                document.getElementById('shortageCount').textContent = shortage;
+
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Failed to load data.</td></tr>';
+            }
+        } catch (e) {
+            console.error(e);
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Connection error. Please try again.</td></tr>';
+        }
+    });
+</script>
+{% endblock %}

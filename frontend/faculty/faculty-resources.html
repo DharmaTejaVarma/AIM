@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Faculty Resources - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="faculty-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="faculty-profile.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          My Profile
+        </a>
+        <a href="faculty-students.html" class="nav-item">
+          <span class="nav-icon">🎓</span>
+          My Students
+        </a>
+        <a href="faculty-assessments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assessments
+        </a>
+        <a href="faculty-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="faculty-attendance.html" class="nav-item">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="faculty-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="faculty-resources.html" class="nav-item active">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👨‍🏫</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Faculty User</div>
+            <div class="user-role" id="current-role">Professor</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search resources..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="resourcesAlert"></div>
+
+        <div class="page-header">
+          <h1>Resources Management</h1>
+          <p class="page-subtitle">Upload and manage learning resources for your students</p>
+        </div>
+
+        <div class="action-bar">
+          <div class="left-actions">
+            <button class="btn btn-primary" onclick="showUploadResourceModal()">
+              <span class="action-icon">⬆️</span> Upload New Resource
+            </button>
+          </div>
+          <div class="filter-group">
+            <input type="text" id="searchInput" class="form-input" placeholder="Search resources...">
+            <select id="subjectFilter" class="form-select" onchange="facultyResources.filterResources()">
+              <option value="">All My Subjects</option>
+              <!-- Options populated by JS -->
+            </select>
+            <select id="typeFilter" class="form-select" onchange="facultyResources.filterResources()">
+              <option value="">All Types</option>
+              <option value="lecture_notes">Lecture Notes</option>
+              <option value="syllabus">Syllabus</option>
+              <option value="question_bank">Question Bank</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 2rem;">
+          <h3>My Uploaded Resources <span class="badge badge-info" id="totalResourcesCount">-- resources</span></h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Subject</th>
+                  <th>Type</th>
+                  <th>Uploaded By</th>
+                  <th>Upload Date</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="resourcesTableBody">
+                <!-- Resources data populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="pagination">
+            <!-- Pagination buttons populated by JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="uploadResourceModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="hideUploadResourceModal()">×</span>
+      <h2 id="resourceModalTitle">Upload New Resource</h2>
+      <form id="resourceForm">
+        <input type="hidden" id="resourceId">
+        <div class="form-group">
+          <label for="resourceTitle">Title</label>
+          <input type="text" id="resourceTitle" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="resourceSubject">Subject & Class</label>
+          <select id="resourceSubject" class="form-select" required>
+            <option value="">Select Subject & Class</option>
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="resourceType">Resource Type</label>
+          <select id="resourceType" class="form-select" required>
+            <option value="">Select Type</option>
+            <option value="lecture_notes">Lecture Notes</option>
+            <option value="syllabus">Syllabus</option>
+            <option value="question_bank">Question Bank</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="resourceFile">Upload File (PDF, DOCX, PPTX, ZIP - Max 5MB)</label>
+          <input type="file" id="resourceFile" class="form-input" accept=".pdf,.docx,.pptx,.zip" required>
+        </div>
+        <div class="form-group">
+          <label for="resourceDescription">Description (Optional)</label>
+          <textarea id="resourceDescription" class="form-textarea" rows="3"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="hideUploadResourceModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Upload Resource</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/faculty-resources.js"></script>
+</body>
+</html>

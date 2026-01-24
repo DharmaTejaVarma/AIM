@@ -1,0 +1,108 @@
+--- ERROR migrating CSE ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+--- ERROR migrating ME ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+--- ERROR migrating AI&DS ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+--- ERROR migrating IT ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+--- ERROR migrating EEE ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+--- ERROR migrating CSEDS ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+--- ERROR migrating AIML ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+--- ERROR migrating CSEAI ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+--- ERROR migrating AIDS ---
+column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+
+Traceback (most recent call last):
+  File "C:\Users\dines\Downloads\Campus-v156\migrate_academic.py", line 178, in migrate_data
+    cur.execute("""
+psycopg2.errors.UndefinedColumn: column "status" of relation "department" does not exist
+LINE 2: ...              INSERT INTO department (name, code, status, co...
+                                                             ^
+

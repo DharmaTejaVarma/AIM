@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="semesterMarksTitle">Semester Marks - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="student-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="student-profile.html" class="nav-item">
+          <span class="nav-icon">👤</span>
+          My Profile
+        </a>
+        <a href="student-assignments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assignments
+        </a>
+        <a href="student-marks.html" class="nav-item active">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="student-attendance.html" class="nav-item">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="student-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="student-resources.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">🎓</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Student User</div>
+            <div class="user-role" id="current-role">Undergraduate</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search marks..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="window.handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="semesterMarksAlert"></div>
+
+        <div class="page-header">
+          <h1 id="semesterHeader">Semester Marks</h1>
+          <p class="page-subtitle">Detailed marks for subjects in this semester</p>
+        </div>
+
+        <div class="action-bar">
+          <button id="backToMyMarksBtn" class="btn btn-secondary" onclick="window.location.href='student-marks.html'">
+            <span class="action-icon">←</span> Back to My Marks
+          </button>
+          <div class="filter-group">
+            <button id="filterAllSubjectsBtn" class="btn btn-primary btn-sm" onclick="studentSemesterMarks.filterSubjectsView('all')">All Subjects</button>
+            <button id="filterTheorySubjectsBtn" class="btn btn-secondary btn-sm" onclick="studentSemesterMarks.filterSubjectsView('theory')">Theory</button>
+            <button id="filterLabSubjectsBtn" class="btn btn-secondary btn-sm" onclick="studentSemesterMarks.filterSubjectsView('lab')">Lab</button>
+            <button id="filterSkillSubjectsBtn" class="btn btn-secondary btn-sm" onclick="studentSemesterMarks.filterSubjectsView('skill_course')">Skill Course</button>
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 32px;">
+          <h3>Subjects in this Semester <span class="badge badge-info" id="totalSubjectsCount">-- subjects</span></h3>
+          <div id="detailedMarksCards" class="marks-cards-grid">
+            <!-- Detailed marks cards populated by JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/marks-calculator.js"></script>
+  <script src="../js/student-semester-marks.js"></script>
+
+  <style>
+    .marks-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+      gap: 32px;
+      margin-top: 20px;
+    }
+
+    .mark-card {
+      background: var(--bg-primary);
+      border: 2px solid var(--border-color);
+      border-radius: 20px;
+      padding: 32px;
+      box-shadow: var(--shadow);
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .mark-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+    }
+
+    .mark-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 2px solid var(--border-color);
+    }
+
+    .mark-card-header h3 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .mark-card-body {
+      flex: 1;
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.8;
+    }
+
+    .mark-card-body strong {
+      color: var(--text-primary);
+    }
+
+    .mark-card-footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+      font-size: 13px;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+  </style>
+</body>
+</html>

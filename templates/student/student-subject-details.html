@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Mark Details: {{ subject.name }} | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+    {% set active_page = 'marks' %}
+    {% include 'includes/student_sidebar.html' %}
+
+    <main class="main">
+        <header class="topbar">
+            <div class="header-title">
+                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Subject Details
+                </h2>
+            </div>
+            <div class="user-area">
+                <button class="notification-btn" aria-label="Notifications">🔔
+                    {% if new_updates_count > 0 %}
+                    <span class="notification-dot"></span>
+                    {% endif %}
+                </button>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div class="action-bar" style="margin-bottom: 20px;">
+                <a href="javascript:history.back()" class="btn btn-secondary">
+                    <span class="action-icon">←</span> Back
+                </a>
+            </div>
+
+            <div class="page-header">
+                <h1>{{ subject.name }}</h1>
+                <p class="page-subtitle">{{ subject.code }} • Credits: {{ subject.credits }} • Type: {{
+                    subject.type|title }}</p>
+            </div>
+
+            <!-- Summary Card -->
+            <div class="dashboard-card" style="margin-bottom: 30px;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+                    <div>
+                        <h4 style="margin:0; color:var(--text-secondary);">Final Internal Marks</h4>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary-color);">
+                            {% if internal_data.allInternalMarksEntered %}
+                            {{ internal_data.totalInternal }} <span style="font-size: 1rem; color: var(--text-muted);">/
+                                {{ internal_data.maxInternal }}</span>
+                            {% else %}
+                            <span style="font-size: 1.5rem; color: var(--text-muted);">--</span>
+                            <span style="font-size: 1rem; color: var(--text-muted);">/ {{ internal_data.maxInternal
+                                }}</span>
+                            <div
+                                style="font-size: 0.8rem; color: var(--text-secondary); font-weight: normal; margin-top: 5px;">
+                                <span class="badge badge-warning">Pending Completion</span>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% if external_marks is not none %}
+                    <div>
+                        <h4 style="margin:0; color:var(--text-secondary);">External Marks</h4>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: var(--text-primary);">
+                            {{ external_marks }} <span style="font-size: 1rem; color: var(--text-muted);">/ 70</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 style="margin:0; color:var(--text-secondary);">Total Score</h4>
+                        <div style="font-size: 2.5rem; font-weight: 700; color: var(--success-color);">
+                            {{ internal_data.totalInternal + external_marks }} <span
+                                style="font-size: 1rem; color: var(--text-muted);">/ 100</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="grid-2-col"
+                style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
+
+                <!-- Internal Breakdown -->
+                <div class="dashboard-card">
+                    <h3>Internal Marks Breakdown</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Component</th>
+                                <th>Score</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Mid 1 Exam</td>
+                                <td>{{ internal_data.mid1 }}</td>
+                                <td>
+                                    {% if internal_data.mid1 > 0 %} <span class="badge badge-success">Completed</span>
+                                    {% else %} <span class="badge badge-warning">Pending</span> {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Mid 2 Exam</td>
+                                <td>{{ internal_data.mid2 }}</td>
+                                <td>
+                                    {% if internal_data.mid2 > 0 %} <span class="badge badge-success">Completed</span>
+                                    {% else %} <span class="badge badge-warning">Pending</span> {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Assignments Average</td>
+                                <td>{{ internal_data.assignments }}</td>
+                                <td>
+                                    <span class="text-muted">Calculated from individual assignments</span>
+                                </td>
+                            </tr>
+                            {% if internal_data.day_to_day > 0 %}
+                            <tr>
+                                <td>Day-to-Day / Lab</td>
+                                <td>{{ internal_data.day_to_day }}</td>
+                                <td>-</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                        <tfoot>
+                            <tr style="background: var(--bg-secondary); font-weight: bold;">
+                                <td>Calculated Total</td>
+                                <td>
+                                    {% if internal_data.allInternalMarksEntered %}
+                                    {{ internal_data.totalInternal }} / {{ internal_data.maxInternal }}
+                                    {% else %}
+                                    <span class="text-muted">-- / {{ internal_data.maxInternal }}</span>
+                                    {% endif %}
+                                </td>
+                                <td></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    <div style="margin-top: 15px; font-size: 0.9em; color: var(--text-secondary);">
+                        <strong>Calculation Logic:</strong>
+                        {% if subject.type == 'theory' %}
+                        <p>Best Mid (80%) + Other Mid (20%) + Assignments Avg</p>
+                        {% elif subject.type == 'lab' %}
+                        <p>Mid Exams + Day-to-Day Evaluation</p>
+                        {% else %}
+                        <p>Standard Internal Assessment</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Detailed Raw Records -->
+                <div class="dashboard-card">
+                    <h3>All Recorded Marks</h3>
+                    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Assessment</th>
+                                    <th>Marks</th>
+                                    <th>Max</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if marks %}
+                                {% for mark in marks %}
+                                <tr>
+                                    <td style="text-transform: capitalize;">
+                                        {{ mark.assessment_type.replace('_', ' ') }}
+                                        {% if mark.assignment_number %} {{ mark.assignment_number }}{% endif %}
+                                    </td>
+                                    <td>
+                                        {% if mark.is_absent %}
+                                        <span class="badge badge-danger">Absent</span>
+                                        {% else %}
+                                        <b>{{ mark.marks }}</b>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ mark.max_marks }}</td>
+                                    <td>{{ mark.date }}</td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center">No marks recorded yet.</td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </section>
+    </main>
+</div>
+{% endblock %}

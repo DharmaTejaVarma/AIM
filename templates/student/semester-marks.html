@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Semester Marks - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'marks' %}
+  {% include 'includes/student_sidebar.html' %}
+
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Semester Marks</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div id="semesterMarksAlert"></div>
+
+      <div class="page-header">
+        <h1 id="semesterHeader">Semester Marks</h1>
+        <p class="page-subtitle">Detailed marks for subjects in this semester</p>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <a href="{{ url_for('student.marks') }}" class="btn btn-outline-secondary">
+            <span class="action-icon">←</span> Back to My Marks
+          </a>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <div class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Subject Type</label>
+            <div class="filter-actions-simple">
+              <button id="filterAllSubjectsBtn" class="btn btn-primary"
+                onclick="studentSemesterMarks.filterSubjectsView('all')">All</button>
+              <button id="filterTheorySubjectsBtn" class="btn btn-outline-secondary"
+                onclick="studentSemesterMarks.filterSubjectsView('theory')">Theory</button>
+              <button id="filterLabSubjectsBtn" class="btn btn-outline-secondary"
+                onclick="studentSemesterMarks.filterSubjectsView('lab')">Lab</button>
+              <button id="filterSkillSubjectsBtn" class="btn btn-outline-secondary"
+                onclick="studentSemesterMarks.filterSubjectsView('skill_course')">Skill</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-card full-width" style="margin-top: 32px;">
+        <h3>Subjects in this Semester <span class="badge badge-info" id="totalSubjectsCount">-- subjects</span></h3>
+        <div id="detailedMarksCards" class="marks-cards-grid">
+          <!-- Detailed marks cards populated by JS -->
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<!-- Core Scripts -->
+<script src="{{ url_for('static', filename='js/database.js') }}"></script>
+<script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+
+{% block extra_css %}
+<style>
+  .marks-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 32px;
+    margin-top: 20px;
+  }
+
+  .mark-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mark-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .mark-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  .mark-card-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .mark-card-body {
+    flex: 1;
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  .mark-card-body strong {
+    color: var(--text-primary);
+  }
+
+  .mark-card-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+</style>
+{% endblock %}
+</div>
+{% endblock %}

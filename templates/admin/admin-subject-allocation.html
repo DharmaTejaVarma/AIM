@@ -1,0 +1,546 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Subject Allocation - CampusIQ{% endblock %}
+
+{% block content %}
+{% set active_page = 'subject_allocation' %}
+<div id="app" class="app-shell">
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Subject Allocation</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div id="subjectAllocationAlert" class="alert" style="display: block;">
+        {% for category, message in messages %}
+        <div class="alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h1>Subject Allocation Management</h1>
+        <p class="page-subtitle">Allocate subjects to specific classes and faculty members</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-card--blue">
+          <div class="stat-header">
+            <div class="stat-label">Total Offerings</div>
+            <div class="stat-icon">📝</div>
+          </div>
+          <div class="stat-value">{{ offerings|length }}</div>
+          <div class="stat-subtext">Active course sections</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-header">
+            <div class="stat-label">Designated Mentors</div>
+            <div class="stat-icon">⭐</div>
+          </div>
+          <div class="stat-value">{{ offerings|selectattr('is_mentor')|list|length }}</div>
+          <div class="stat-subtext">Class teacher roles</div>
+        </div>
+        <div class="stat-card stat-card--sky">
+          <div class="stat-header">
+            <div class="stat-label">Branches Covered</div>
+            <div class="stat-icon">🏢</div>
+          </div>
+          <div class="stat-value">{{ departments|length }}</div>
+          <div class="stat-subtext">Academic branches</div>
+        </div>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <button class="btn btn-primary" onclick="showAllocateSubjectModal()">
+            <span class="action-icon">➕</span> Allocate Subject
+          </button>
+          <form action="{{ url_for('admin.sync_mentors') }}" method="POST" style="display:inline;">
+            <button type="submit" class="btn btn-outline-secondary"
+              onclick="return confirm('This will automatically allocate student counselors based on designated Mentors/Class Teachers. Continue?')">
+              <span class="action-icon">🔄</span> Sync Mentors
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <form action="{{ url_for('admin.subject_allocation') }}" method="GET" class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Branch</label>
+            <select name="branch" class="form-select" onchange="this.form.submit()">
+              <option value="">All Branches</option>
+              {% for dept in departments %}
+              <option value="{{ dept.name }}" {% if branch==dept.name %}selected{% endif %}>{{
+                dept.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Year</label>
+            <select name="year" class="form-select" onchange="this.form.submit()">
+              <option value="">All Years</option>
+              {% for y in [1, 2, 3, 4] %}
+              <option value="{{ y }}" {% if year==y %}selected{% endif %}>Year {{ y }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Semester</label>
+            <select name="semester" class="form-select" onchange="this.form.submit()">
+              <option value="">All Semesters</option>
+              {% for s in [1, 2, 3, 4, 5, 6, 7, 8] %}
+              <option value="{{ s }}" {% if semester==s %}selected{% endif %}>Semester {{ s
+                }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Section</label>
+            <select name="section" class="form-select" onchange="this.form.submit()">
+              <option value="">All Sections</option>
+              {% for sec in ['A', 'B', 'C'] %}
+              <option value="{{ sec }}" {% if section==sec %}selected{% endif %}>Section {{ sec }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-actions-simple">
+            <button type="submit" class="btn btn-primary">Apply</button>
+            {% if branch or year or semester or section %}
+            <a href="{{ url_for('admin.subject_allocation') }}" class="btn btn-outline-secondary"
+              style="text-decoration:none;">Clear</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <h3 class="card-title">Class Offerings</h3>
+          <span class="badge badge-info">{{ offerings|length }} offerings</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Branch</th>
+                <th>Section</th>
+                <th>Subject</th>
+                <th>Type</th>
+                <th>Faculty</th>
+                <th>Mentor</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for offering in offerings %}
+              <tr>
+                <td style="font-weight: 500;">{{ offering.branch }}</td>
+                <td>
+                  <span class="badge badge-secondary">Y{{ offering.year }} S{{ offering.semester }}</span>
+                  <span class="badge badge-outline-info">Sec {{ offering.section }}</span>
+                </td>
+                <td>
+                  {% if offering.subject %}
+                  <div style="font-weight: 600; color: var(--primary-color);">{{ offering.subject.name }}</div>
+                  <small class="text-muted">{{ offering.subject.code }}</small>
+                  {% else %}
+                  <span class="text-danger">⚠️ Subject Missing ({{ offering.subject_id }})</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if offering.subject and offering.subject.type %}
+                  {{ offering.subject.type|replace('_', ' ')|title }}
+                  {% else %}
+                  -
+                  {% endif %}
+                </td>
+                <td>
+                  {% if offering.faculty %}
+                  {{ offering.faculty.name }}
+                  {% else %}
+                  <span class="text-danger">⚠️ Faculty Missing</span>
+                  {% endif %}
+                </td>
+                <td>
+                  {% if offering.is_mentor %}
+                  <span class="badge badge-primary">⭐ Mentor</span>
+                  {% else %}
+                  <span class="text-muted">-</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge badge-{{ 'success' if offering.status == 'active' else 'secondary' }}">
+                    {{ offering.status|title }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-buttons" style="justify-content: flex-end;">
+                    <button class="btn btn-sm btn-outline-secondary" title="Edit"
+                      data-allocation='{{ offering|tojson }}'
+                      onclick='editAllocation(JSON.parse(this.dataset.allocation))'>✏️ Edit</button>
+                    <form action="{{ url_for('admin.delete_subject_allocation', id=offering.id) }}" method="POST"
+                      style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete this allocation?');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">🗑️ Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+              {% if not offerings %}
+              <tr>
+                <td colspan="8" class="text-center" style="padding: 3rem; color: #666;">
+                  <div style="font-size: 2rem; margin-bottom: 1rem;">🔍</div>
+                  No subject allocations found for the selected filters.
+                </td>
+              </tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Allocate Subject Modal -->
+<div id="allocateSubjectModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideAllocateSubjectModal()">×</span>
+    <h2>Allocate Subject</h2>
+    <form action="{{ url_for('admin.add_subject_allocation') }}" method="POST">
+      <div class="form-group">
+        <label for="branch">Branch</label>
+        <select id="branch" name="branch" class="form-select" required>
+          <option value="">Select Branch</option>
+          {% for dept in departments %}
+          <option value="{{ dept.name }}">{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="year">Year</label>
+        <select id="year" name="year" class="form-select" required onchange="updateSemesters()">
+          <option value="">Select Year</option>
+          <option value="1">Year 1</option>
+          <option value="2">Year 2</option>
+          <option value="3">Year 3</option>
+          <option value="4">Year 4</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="semester">Semester</label>
+        <select id="semester" name="semester" class="form-select" required disabled>
+          <option value="">Select Semester</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="section">Section</label>
+        <select id="section" name="section" class="form-select" required>
+          <option value="">Select Section</option>
+          <option value="A">Section A</option>
+          <option value="B">Section B</option>
+          <option value="C">Section C</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="subject_id">Subject</label>
+        <select id="subject_id" name="subject_id" class="form-select" required>
+          <option value="">Select Subject</option>
+          {% for subject in subjects %}
+          <option value="{{ subject.id }}">{{ subject.name }} ({{ subject.code }})</option>
+          {% endfor %}
+        </select>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="subject_type_display">Subject Type</label>
+        <input type="text" id="subject_type_display" class="form-control" readonly placeholder="Auto-populated">
+      </div>
+      <div class="form-group">
+        <label for="faculty_id">Faculty</label>
+        <select id="faculty_id" name="faculty_id" class="form-select" required>
+          <option value="">Select Faculty</option>
+          {% for faculty in faculty_members %}
+          <option value="{{ faculty.id }}">{{ faculty.name }} ({{ faculty.faculty_id }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="status">Status</label>
+        <select id="status" name="status" class="form-select" required>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+          <option value="cleared">Cleared</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex-direction: row; align-items: center; gap: 10px; display: flex;">
+        <input type="checkbox" id="is_mentor" name="is_mentor" style="width: 20px; height: 20px;">
+        <label for="is_mentor" style="margin: 0;">Is Mentor / Class Teacher?</label>
+      </div>
+      <div id="saveProgressBarContainer" style="display: none; margin-top: 15px; margin-bottom: 15px;">
+        <div class="progress" style="height: 20px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;">
+          <div id="saveProgressBar" class="progress-bar" role="progressbar"
+            style="width: 0%; height: 100%; background-color: #0d6efd; color: white; text-align: center; line-height: 20px; transition: width 0.3s ease;">
+            0%</div>
+        </div>
+        <div id="saveProgressText" class="text-center mt-2" style="font-size: 0.9em; color: #6c757d;">Saving...</div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideAllocateSubjectModal()">Cancel</button>
+        <button type="button" class="btn btn-primary" onclick="saveAllocation()">Save Allocation</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Embed subjects data for client-side filtering
+  const allSubjects = JSON.parse('{{ subjects_data | tojson | safe }}');
+
+  function showAllocationModal() {
+    document.getElementById('allocateSubjectModal').style.display = 'block';
+  }
+
+  // Alias for the button onclick
+  function showAllocateSubjectModal() {
+    showAllocationModal();
+  }
+
+  function hideAllocateSubjectModal() {
+    document.getElementById('allocateSubjectModal').style.display = 'none';
+  }
+
+  function hideAllocationModal() {
+    document.getElementById('allocateSubjectModal').style.display = 'none';
+  }
+
+  function editAllocation(allocation) {
+    // Note: This function needs to be adapted if using a separate Edit Modal
+    // For now, we reuse the Add Modal but would need to change action/title
+    // Or if there is a separate edit modal, ensure it exists.
+    // The current template only shows 'allocateSubjectModal'.
+    // Assuming we reuse 'allocateSubjectModal' for simplicity or need to create 'allocationModal'.
+    // Given the current HTML structure only has 'allocateSubjectModal', let's use that.
+
+    const modal = document.getElementById('allocateSubjectModal');
+    modal.style.display = 'block';
+    modal.querySelector('h2').innerText = 'Edit Allocation';
+    modal.querySelector('form').action = `/admin/subject-allocation/edit/${allocation.id}`;
+
+    document.getElementById('branch').value = allocation.branch;
+    // Trigger update to populate year/subject dropdowns based on branch
+    // But we need to set year first? 
+    // Actually, updating branch should clear subsequent fields ideally, but for EDIT, we set them back.
+
+    document.getElementById('year').value = allocation.year;
+
+    // Trigger updates
+    updateSemesters();
+    document.getElementById('semester').value = allocation.semester;
+
+    updateSubjects();
+    document.getElementById('subject_id').value = allocation.subject_id;
+
+    // Update Subject Type display manually as change event might not fire
+    const subject = allSubjects.find(s => s.id == allocation.subject_id);
+    if (subject) {
+      document.getElementById('subject_type_display').value = subject.type.replace('_', ' ').toUpperCase();
+    }
+
+    document.getElementById('section').value = allocation.section;
+    document.getElementById('faculty_id').value = allocation.faculty_id;
+    document.getElementById('status').value = allocation.status;
+    document.getElementById('is_mentor').checked = allocation.is_mentor || false;
+  }
+
+  function updateSemesters() {
+    const year = parseInt(document.getElementById('year').value);
+    const semesterSelect = document.getElementById('semester');
+    semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+    semesterSelect.disabled = true;
+
+    if (year) {
+      semesterSelect.disabled = false;
+      let maxSemester = 0;
+
+      // Logic: 
+      // Year 1: Sem 1-2
+      // Year 2: Sem 1-4
+      // Year 3: Sem 1-6
+      // Year 4: Sem 1-8
+      if (year === 1) maxSemester = 2;
+      else if (year === 2) maxSemester = 4;
+      else if (year === 3) maxSemester = 6;
+      else if (year === 4) maxSemester = 8;
+
+      for (let i = 1; i <= maxSemester; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.text = `Semester ${i}`;
+        semesterSelect.add(option);
+      }
+    }
+    // Reset subject when year changes (and thus semester changes)
+    updateSubjects();
+  }
+
+  function updateSubjects() {
+    const branch = document.getElementById('branch').value;
+    const year = parseInt(document.getElementById('year').value);
+    const semester = parseInt(document.getElementById('semester').value);
+    const subjectSelect = document.getElementById('subject_id');
+    const typeDisplay = document.getElementById('subject_type_display');
+
+    // Save current selection if possible, though it might be invalid
+    const currentSelection = subjectSelect.value;
+    const currentSelectionObj = allSubjects.find(s => s.id == currentSelection);
+
+    subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+    typeDisplay.value = '';
+
+    if (branch && year && semester) {
+      // Filter unique subjects by code to prevent duplicates if multiple entries exist with same code/name
+      // But assuming 'allSubjects' is raw from DB, let's filter by criteria first
+      const filteredSubjects = allSubjects.filter(s => s.branch === branch && s.year === year && s.semester === semester);
+
+      // Remove duplicates based on Subject Code
+      const seenCodes = new Set();
+      const uniqueSubjects = [];
+
+      filteredSubjects.forEach(s => {
+        if (!seenCodes.has(s.code)) {
+          seenCodes.add(s.code);
+          uniqueSubjects.push(s);
+        }
+      });
+
+      uniqueSubjects.forEach(subject => {
+        const option = document.createElement('option');
+        option.value = subject.id;
+        option.text = `${subject.name} (${subject.code})`;
+        subjectSelect.add(option);
+      });
+    }
+
+    // Restore selection if it still exists in new options (or if valid for this branch/year/sem)
+    // Check if current selection roughly matches
+    if (currentSelectionObj && currentSelectionObj.branch === branch &&
+      currentSelectionObj.year === year && currentSelectionObj.semester === semester) {
+      subjectSelect.value = currentSelection;
+
+      // Restore type display
+      typeDisplay.value = currentSelectionObj.type.replace('_', ' ').toUpperCase();
+    }
+  }
+
+  // Update Subject Type when subject changes
+  document.getElementById('subject_id').addEventListener('change', function () {
+    const subjectId = this.value;
+    const typeDisplay = document.getElementById('subject_type_display');
+
+    if (subjectId) {
+      const subject = allSubjects.find(s => s.id == subjectId);
+      if (subject) {
+        typeDisplay.value = subject.type.replace('_', ' ').toUpperCase();
+      }
+    } else {
+      typeDisplay.value = '';
+    }
+  });
+
+  // Add event listener to Branch to trigger subject update
+  document.getElementById('branch').addEventListener('change', updateSubjects);
+  // Add event listener to semester to trigger subject update
+  document.getElementById('semester').addEventListener('change', updateSubjects);
+
+  // Close modal when clicking outside
+  window.onclick = function (event) {
+    if (event.target == document.getElementById('allocateSubjectModal')) {
+      hideAllocateSubjectModal();
+    }
+  }
+
+  function saveAllocation() {
+    const modal = document.getElementById('allocateSubjectModal');
+    const form = modal.querySelector('form');
+    const actionsDiv = modal.querySelector('.modal-actions');
+    const progressBarContainer = document.getElementById('saveProgressBarContainer');
+    const progressBar = document.getElementById('saveProgressBar');
+    const progressText = document.getElementById('saveProgressText');
+
+    // Basic Validation (Check required fields)
+    if (!form.reportValidity()) return;
+
+    // Switch to Progress UI
+    actionsDiv.style.display = 'none';
+    progressBarContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.innerText = '0%';
+    progressText.innerText = 'Saving allocation...';
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      if (progress < 90) {
+        progress += Math.floor(Math.random() * 10) + 5;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = `${progress}%`;
+        progressBar.innerText = `${progress}%`;
+      }
+    }, 200);
+
+    const formData = new FormData(form);
+    const url = form.action;
+
+    fetch(url, {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => {
+        if (response.ok) {
+          // Success
+          clearInterval(interval);
+          progressBar.style.width = '100%';
+          progressBar.innerText = '100%';
+          progressText.innerText = 'Saved Successfully!';
+
+          setTimeout(() => {
+            window.location.reload();
+          }, 500);
+        } else {
+          throw new Error('Server returned error');
+        }
+      })
+      .catch(error => {
+        clearInterval(interval);
+        console.error('Error:', error);
+        alert('An error occurred while saving.');
+        // Restore UI
+        actionsDiv.style.display = 'flex';
+        progressBarContainer.style.display = 'none';
+      });
+  }
+</script>
+
+
+</div>
+{% endblock %}

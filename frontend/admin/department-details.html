@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title id="departmentDetailsTitle">Department Details - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="./admin-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="./admin-students.html" class="nav-item">
+          <span class="nav-icon">🎓</span>
+          Students
+        </a>
+        <a href="./admin-faculty.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          Faculty
+        </a>
+        <a href="./admin-departments.html" class="nav-item active">
+          <span class="nav-icon">🏢</span>
+          Departments
+        </a>
+        <a href="./admin-subjects.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Subjects
+        </a>
+        <a href="./admin-subject-allocation.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Subject Allocation
+        </a>
+        <a href="./admin-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="./admin-external-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          External Marks
+        </a>
+        <a href="./admin-fees.html" class="nav-item">
+          <span class="nav-icon">💰</span>
+          Fees
+        </a>
+        <a href="./admin-announcements.html" class="nav-item">
+          <span class="nav-icon">📢</span>
+          Announcements
+        </a>
+        <a href="./admin-analytics.html" class="nav-item">
+          <span class="nav-icon">📈</span>
+          Analytics
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👤</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Admin User</div>
+            <div class="user-role" id="current-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search students, faculty..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="departmentDetailsAlert"></div>
+
+        <div class="page-header">
+          <h1 id="departmentNameHeader">Department Name</h1>
+          <p class="page-subtitle" id="departmentCode"></p>
+          <p class="page-subtitle" id="departmentHOD"></p>
+        </div>
+
+        <div class="action-bar">
+          <div class="left-actions">
+            <button id="showStudentsBtn" class="btn btn-primary" onclick="departmentDetails.showSection('students')">
+              <span class="action-icon">🎓</span> Students (<span id="totalStudentsCount">0</span>)
+            </button>
+            <button id="showFacultyBtn" class="btn btn-secondary" onclick="departmentDetails.showSection('faculty')">
+              <span class="action-icon">👨‍🏫</span> Faculty (<span id="totalFacultyCount">0</span>)
+            </button>
+          </div>
+        </div>
+
+        <!-- Students Section -->
+        <div id="studentsSection" class="dashboard-card full-width" style="margin-top: 2rem;">
+          <h3>Students in <span id="studentsDepartmentName"></span></h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Student ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Section</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="departmentStudentsTableBody">
+                <!-- Student data populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="studentsPagination">
+            <!-- Pagination buttons populated by JS -->
+          </div>
+        </div>
+
+        <!-- Faculty Section -->
+        <div id="facultySection" class="dashboard-card full-width" style="margin-top: 2rem; display: none;">
+          <h3>Faculty in <span id="facultyDepartmentName"></span></h3>
+          <div class="table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Faculty ID</th>
+                  <th>Name</th>
+                  <th>Email</th>
+                  <th>Designation</th>
+                  <th>Experience</th>
+                  <th>Subjects Taught</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="departmentFacultyTableBody">
+                <!-- Faculty data populated by JS -->
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" id="facultyPagination">
+            <!-- Pagination buttons populated by JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="studentDetailsModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="departmentDetails.hideStudentDetailsModal()">×</span>
+      <h2>Student Details</h2>
+      <div class="details-grid">
+        <div><strong>Name:</strong> <span id="modalStudentName"></span></div>
+        <div><strong>Student ID:</b> <span id="modalStudentId"></span></div>
+        <div><strong>Email:</strong> <span id="modalStudentEmail"></span></div>
+        <div><strong>Phone:</strong> <span id="modalStudentPhone"></span></div>
+        <div><strong>Branch:</strong> <span id="modalStudentBranch"></span></div>
+        <!-- Removed Year and Semester from modal display -->
+        <div><strong>Section:</strong> <span id="modalStudentSection"></span></div>
+        <div><strong>Date of Birth:</strong> <span id="modalStudentDOB"></span></div>
+        <div><strong>Status:</strong> <span id="modalStudentStatus"></span></div>
+        <div><strong>Address:</strong> <span id="modalStudentAddress"></span></div>
+        <div><strong>Father's Name:</strong> <span id="modalStudentFatherName"></span></div>
+        <div><strong>Mother's Name:</strong> <span id="modalStudentMotherName"></span></div>
+        <div><strong>Parents' Phone:</strong> <span id="modalStudentParentsPhone"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="facultyDetailsModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="departmentDetails.hideFacultyDetailsModal()">×</span>
+      <h2>Faculty Details</h2>
+      <div class="details-grid">
+        <div><strong>Name:</strong> <span id="modalFacultyName"></span></div>
+        <div><strong>Faculty ID:</strong> <span id="modalFacultyId"></span></div>
+        <div><strong>Email:</strong> <span id="modalFacultyEmail"></span></div>
+        <div><strong>Phone:</strong> <span id="modalFacultyPhone"></span></div>
+        <div><strong>Department:</strong> <span id="modalFacultyDepartment"></span></div>
+        <div><strong>Designation:</strong> <span id="modalFacultyDesignation"></span></div>
+        <div><strong>Qualification:</strong> <span id="modalFacultyQualification"></span></div>
+        <div><strong>Experience:</strong> <span id="modalFacultyExperience"></span></div>
+        <div><strong>Address:</strong> <span id="modalFacultyAddress"></span></div>
+        <div style="grid-column: 1 / -1;"><strong>Subjects Taught:</strong> <span id="modalFacultySubjectsTaught"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/admin-department-details.js"></script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Timetable - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="student-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="student-profile.html" class="nav-item">
+          <span class="nav-icon">👤</span>
+          My Profile
+        </a>
+        <a href="student-assignments.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Assignments
+        </a>
+        <a href="student-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          Marks
+        </a>
+        <a href="student-attendance.html" class="nav-item">
+          <span class="nav-icon">✅</span>
+          Attendance
+        </a>
+        <a href="student-timetable.html" class="nav-item active">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="student-resources.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Resources
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">🎓</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Student User</div>
+            <div class="user-role" id="current-role">Undergraduate</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search timetable..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="window.handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="timetableAlert"></div>
+
+        <div class="page-header">
+          <h1>My Timetable</h1>
+          <p class="page-subtitle">View your class schedule for the current academic period</p>
+        </div>
+
+        <div class="action-bar">
+          <div class="filter-group">
+            <input type="date" id="timetableDate" class="form-input" value="" onchange="studentTimetable.loadTimetable()">
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 32px;">
+          <div class="header-actions" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <button class="btn secondary btn-sm" onclick="studentTimetable.changeViewDate(-1)"><span>←</span> Previous Day</button>
+            <h3>Timetable for <span id="currentWeekRange">Today</span></h3>
+            <button class="btn secondary btn-sm" onclick="studentTimetable.changeViewDate(1)">Next Day <span>→</span></button>
+          </div>
+          <div id="timetableContainer" class="timetable-container">
+            <!-- Timetable populated by JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/student-timetable.js"></script>
+
+  <style>
+    .action-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 32px;
+      padding: 20px;
+      background: var(--bg-secondary);
+      border-radius: 16px;
+      border: 2px solid var(--border-color);
+    }
+
+    .action-bar .filter-group {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      padding: 12px 16px;
+      border: 2px solid var(--border-color);
+      border-radius: 12px;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-size: 15px;
+      font-weight: 500;
+      transition: all 0.2s ease;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--accent-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+      outline: none;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 15px;
+    }
+
+    .timetable-container {
+      background: var(--bg-primary);
+      border: 2px solid var(--border-color);
+      border-radius: 16px;
+      overflow-x: auto; /* Enable horizontal scrolling for wide timetables */
+      box-shadow: var(--shadow);
+      padding: 20px;
+    }
+
+    .timetable-grid {
+      display: grid;
+      /* grid-template-columns will be set by JS */
+      gap: 1px; /* Small gap between cells */
+      background-color: var(--border-color); /* Grid lines */
+      border-radius: 12px;
+      overflow: hidden;
+      min-width: 1000px; /* Ensure it's wide enough to scroll */
+    }
+
+    .timetable-header-cell {
+      background-color: var(--bg-secondary);
+      padding: 12px 8px;
+      font-weight: 700;
+      text-align: center;
+      color: var(--text-primary);
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .timetable-header-cell small {
+      font-weight: 500;
+      color: var(--text-muted);
+      font-size: 11px;
+      margin-top: 4px;
+    }
+
+    .timetable-day-row {
+      display: contents; /* Allows children to be direct grid items */
+    }
+
+    .timetable-class-cell {
+      background-color: var(--bg-primary);
+      padding: 10px;
+      border: 1px solid var(--border-color);
+      text-align: center;
+      font-size: 12px;
+      color: var(--text-primary);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      min-height: 80px; /* Ensure cells have a minimum height */
+      transition: all 0.2s ease;
+    }
+
+    .timetable-class-cell:hover {
+      background-color: var(--bg-secondary);
+      box-shadow: var(--shadow);
+      z-index: 1; /* Bring hovered cell to front */
+    }
+
+    .timetable-class-cell.empty {
+      color: var(--text-muted);
+      font-style: italic;
+      background-color: var(--bg-secondary);
+    }
+
+    .timetable-class-cell.lunch-break {
+      background-color: var(--bg-tertiary);
+      color: var(--text-secondary);
+      font-weight: 600;
+      font-style: italic;
+    }
+
+    .timetable-class-cell .subject-name {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--accent-primary);
+      margin-bottom: 4px;
+    }
+
+    .timetable-class-cell .class-details,\
+    .timetable-class-cell .room-details {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 2px;
+    }
+
+    .timetable-class-cell.suspended {
+      background-color: rgba(var(--accent-danger-rgb), 0.1);\
+      color: var(--accent-danger);\
+      border-color: var(--accent-danger);\
+    }\
+\
+    .timetable-class-cell.altered {\
+      background-color: rgba(var(--accent-warning-rgb), 0.1);\
+      color: var(--accent-warning);\
+      border-color: var(--accent-warning);\
+    }\
+\
+    .timetable-class-cell .actions {\
+      margin-top: 8px;\
+      display: flex;\
+      gap: 5px;\
+    }\
+\
+    .timetable-class-cell .actions .btn {\
+      padding: 4px 8px;\
+      font-size: 10px;\
+      border-radius: 6px;\
+    }\
+\
+    @keyframes fadeIn {\
+      from { opacity: 0; transform: translateY(-20px); }\
+      to { opacity: 1; transform: translateY(0); }\
+    }\
+  </style>\
+</body>\
+</html>

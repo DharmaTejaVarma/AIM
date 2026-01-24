@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Timetable - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="./admin-dashboard.html" class="nav-item">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="./admin-students.html" class="nav-item">
+          <span class="nav-icon">🎓</span>
+          Students
+        </a>
+        <a href="./admin-faculty.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          Faculty
+        </a>
+        <a href="./admin-departments.html" class="nav-item">
+          <span class="nav-icon">🏢</span>
+          Departments
+        </a>
+        <a href="./admin-subjects.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Subjects
+        </a>
+        <a href="./admin-subject-allocation.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Subject Allocation
+        </a>
+        <a href="./admin-timetable.html" class="nav-item active">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="./admin-external-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          External Marks
+        </a>
+        <a href="./admin-fees.html" class="nav-item">
+          <span class="nav-icon">💰</span>
+          Fees
+        </a>
+        <a href="./admin-announcements.html" class="nav-item">
+          <span class="nav-icon">📢</span>
+          Announcements
+        </a>
+        <a href="./admin-analytics.html" class="nav-item">
+          <span class="nav-icon">📈</span>
+          Analytics
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👤</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Admin User</div>
+            <div class="user-role" id="current-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="global-search" type="text" placeholder="Search timetable..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div id="timetableAlert"></div>
+
+        <div class="page-header">
+          <h1>Timetable Management</h1>
+          <p class="page-subtitle">View and manage class schedules for all branches and sections</p>
+        </div>
+
+        <div class="action-bar">
+          <div class="left-actions">
+            <button class="btn btn-primary" onclick="adminTimetable.showAddTimetableModal()">
+              <span class="action-icon">➕</span> Add Timetable Entry
+            </button>
+            <button class="btn btn-secondary" onclick="adminTimetable.showImportTimetableModal()">
+              <span class="action-icon">📥</span> Import CSV
+            </button>
+            <button class="btn btn-secondary" onclick="adminTimetable.downloadTimetableTemplate()">
+              <span class="action-icon">⬇️</span> Download Template
+            </button>
+            <button class="btn btn-secondary" onclick="adminTimetable.exportTimetable()">
+              <span class="action-icon">📤</span> Export CSV
+            </button>
+          </div>
+          <div class="filter-group">
+            <select id="branchFilter" class="form-select" onchange="adminTimetable.filterTimetable()">
+              <option value="">All Branches</option>
+              <!-- Options populated by JS -->
+            </select>
+            <select id="yearFilter" class="form-select" onchange="adminTimetable.handleYearFilterChange()">
+              <option value="">All Years</option>
+              <option value="1">Year 1</option>
+              <option value="2">Year 2</option>
+              <option value="3">Year 3</option>
+              <option value="4">Year 4</option>
+            </select>
+            <select id="semesterFilter" class="form-select" onchange="adminTimetable.filterTimetable()">
+              <option value="">All Semesters</option>
+              <!-- Options populated by JS -->
+            </select>
+            <select id="sectionFilter" class="form-select" onchange="adminTimetable.filterTimetable()">
+              <option value="">All Sections</option>
+              <option value="A">Section A</option>
+              <option value="B">Section B</option>
+              <option value="C">Section C</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="dashboard-card full-width" style="margin-top: 2rem;">
+          <div class="card-header-with-action">
+            <h3>Timetable for <span id="currentWeekRange">Today</span></h3>
+            <span class="badge badge-info" id="totalTimetableEntries">-- entries</span>
+          </div>
+          <div id="timetableContainer" class="timetable-container">
+            <!-- Timetable populated by JS -->
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <!-- Modals -->
+  <div id="timetableModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="adminTimetable.hideTimetableModal()">×</span>
+      <h2 id="timetableModalTitle">Add Timetable Entry</h2>
+      <form id="timetableForm">
+        <input type="hidden" id="timetableEntryId">
+        <div class="form-group">
+          <label for="entryBranch">Branch</label>
+          <select id="entryBranch" class="form-select" required onchange="adminTimetable.handleModalFilterChange()">
+            <option value="">Select Branch</option>
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entryYear">Year</label>
+          <select id="entryYear" class="form-select" required onchange="adminTimetable.handleModalFilterChange()">
+            <option value="">Select Year</option>
+            <option value="1">Year 1</option>
+            <option value="2">Year 2</option>
+            <option value="3">Year 3</option>
+            <option value="4">Year 4</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entrySemester">Semester</label>
+          <select id="entrySemester" class="form-select" required disabled onchange="adminTimetable.handleModalFilterChange()">
+            <option value="">Select Semester</option>
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entrySection">Section</label>
+          <select id="entrySection" class="form-select" required onchange="adminTimetable.handleModalFilterChange()">
+            <option value="">Select Section</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entrySubject">Subject</label>
+          <select id="entrySubject" class="form-select" required disabled onchange="adminTimetable.handleSubjectChangeInModal()">
+            <option value="">Select Subject</option>
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entryFaculty">Faculty</label>
+          <select id="entryFaculty" class="form-select" required>
+            <option value="">Select Faculty</option>
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entryDayOfWeek">Day of Week</label>
+          <select id="entryDayOfWeek" class="form-select" required onchange="adminTimetable.handleModalFilterChange()">
+            <option value="">Select Day</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+            <option value="Saturday">Saturday</option>
+            <option value="Sunday">Sunday</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entryPeriodBlock">Period / Lab Block</label>
+          <select id="entryPeriodBlock" class="form-select" required onchange="adminTimetable.handlePeriodBlockChange()">
+            <option value="">Select Period/Block</option>
+            <!-- Options populated by JS based on subject type -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="entryStartTime">Start Time</label>
+          <input type="time" id="entryStartTime" class="form-input" required readonly>
+        </div>
+        <div class="form-group">
+          <label for="entryEndTime">End Time</label>
+          <input type="time" id="entryEndTime" class="form-input" required readonly>
+        </div>
+        <div class="form-group">
+          <label for="entryRoomNumber">Room Number</label>
+          <input type="text" id="entryRoomNumber" class="form-input" required>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" onclick="adminTimetable.hideTimetableModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="importTimetableModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="adminTimetable.hideImportTimetableModal()">×</span>
+      <h2>Import Timetable from CSV</h2>
+      <div class="alert alert-info">
+        <strong>Note:</strong> CSV must contain 'day_of_week', 'start_time', 'end_time', 'branch', 'year', 'semester', 'section', 'subject_code', 'faculty_id', 'room_number' columns.
+        <button class="btn btn-secondary btn-sm" onclick="adminTimetable.downloadTimetableTemplate()" style="margin-left: 10px;">Download Template</button>
+      </div>
+      <div class="form-group">
+        <label for="timetableCsvFile">Upload CSV File</label>
+        <input type="file" id="timetableCsvFile" class="form-input" accept=".csv" onchange="adminTimetable.handleTimetableFileSelect(event)">
+      </div>
+      <div id="importTimetablePreview" class="table-container" style="display: none; max-height: 200px; overflow-y: auto; margin-bottom: 1.25rem;">
+        <h4>CSV Preview (First 5 rows)</h4>
+        <table class="data-table">
+          <thead>
+            <tr id="previewTimetableHeader"></tr>
+          </thead>
+          <tbody id="previewTimetableBody"></tbody>
+        </table>
+      </div>
+      <div id="importTimetableResults" style="display: none; margin-top: 1.25rem;">
+        <div class="alert">
+          <strong>Import Status:</strong>
+        </div>
+        <div id="importTimetableStats" class="dashboard-card">
+          <!-- Import results populated by JS -->
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="adminTimetable.hideImportTimetableModal()">Close</button>
+        <button type="button" id="importTimetableBtn" class="btn btn-primary" onclick="adminTimetable.importTimetable()" disabled>Import Data</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/admin-timetable.js"></script>
+</body>
+</html>

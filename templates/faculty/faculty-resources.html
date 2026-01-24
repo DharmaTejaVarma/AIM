@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}My Resources | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  <!-- Sidebar -->
+  {% set active_page = 'resources' %}
+  {% include 'includes/faculty_sidebar.html' %}
+
+  <!-- Main Content -->
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">My Resources</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span
+            style="background: red; border-radius: 50%; width: 8px; height: 8px; position: absolute; top: 10px; right: 10px;"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div class="page-header">
+        <h1>My Resources</h1>
+        <div class="action-bar">
+          <div class="filter-group">
+            <label for="subjectFilter">Subject</label>
+            <select id="subjectFilter" class="form-select" onchange="loadResources()">
+              <option value="">All Subjects</option>
+              {% for offering in class_offerings %}
+              <option value="{{ offering.subject.id }}">
+                {{ offering.subject.name }} ({{ offering.subject.code }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="typeFilter">Type</label>
+            <select id="typeFilter" class="form-select" onchange="loadResources()">
+              <option value="">All Types</option>
+              <option value="lecture_notes">Lecture Notes</option>
+              <option value="syllabus">Syllabus</option>
+              <option value="question_bank">Question Bank</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="openUploadModal()">
+            <span class="action-icon">⬆️</span> Upload Resource
+          </button>
+        </div>
+      </div>
+
+      <!-- Resources List -->
+      <div class="card full-width">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Subject</th>
+                <th>Type</th>
+                <th>Uploaded Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="resourcesTableBody">
+              <tr>
+                <td colspan="5" class="text-center">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Modal -->
+  <div id="notificationModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="toggleNotificationModal()">×</span>
+      <h2>Notifications History</h2>
+      <div class="notification-list" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+        {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement-item" style="padding: 15px 0; border-bottom: 1px solid var(--border-color);">
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px; color: var(--text-primary);">{{
+            ann.title }}</div>
+          <p class="text-muted" style="margin: 0 0 4px; font-size: 0.9rem;">{{ ann.content }}</p>
+          <div class="text-muted small" style="font-size: 0.8rem;">{{ ann.date }} • <span class="badge badge-info">{{
+              ann.priority|capitalize }}</span></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center">No notifications found.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleNotificationModal() {
+      const modal = document.getElementById('notificationModal');
+      if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+      } else {
+        modal.style.display = 'block';
+      }
+    }
+
+    // Bind bell click
+    const notificationBtn = document.querySelector('.notification-btn');
+    if (notificationBtn) {
+      notificationBtn.onclick = toggleNotificationModal;
+    }
+
+    // Close on outside click
+    window.onclick = function (event) {
+      const modal = document.getElementById('notificationModal');
+      if (modal && event.target == modal) {
+        modal.style.display = "none";
+      }
+
+      const uploadModal = document.getElementById('uploadModal');
+      if (uploadModal && event.target == uploadModal) { hideUploadModal(); }
+    }
+  </script>
+</div>
+
+<!-- Upload Modal -->
+<div id="uploadModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideUploadModal()">×</span>
+    <h2>Upload Resource</h2>
+    <form id="uploadForm">
+      <input type="hidden" id="editResourceId" name="resource_id">
+      <div class="form-group">
+        <label for="resTitle">Title</label>
+        <input type="text" id="resTitle" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="resSubject">Subject</label>
+        <select id="resSubject" class="form-select" required>
+          <option value="">Select Subject</option>
+          {% for offering in class_offerings %}
+          <option value="{{ offering.subject.id }}">
+            {{ offering.subject.name }} ({{ offering.subject.code }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="resType">Type</label>
+        <select id="resType" class="form-select" required>
+          <option value="lecture_notes">Lecture Notes</option>
+          <option value="syllabus">Syllabus</option>
+          <option value="question_bank">Question Bank</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="resFile">File</label>
+        <input type="file" id="resFile" class="form-input" required>
+        <small class="text-muted">Max 5MB. PDF, DOCX, PPTX, ZIP allowed.</small>
+      </div>
+      <div class="form-group">
+        <label for="resDesc">Description</label>
+        <textarea id="resDesc" class="form-input" rows="2"></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideUploadModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Upload</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- View Modal -->
+<div id="viewModal" class="modal">
+  <div class="modal-content" style="max-width: 900px; height: 85vh; display: flex; flex-direction: column;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+      <h2 id="viewTitle" style="margin: 0;">View Resource</h2>
+      <span class="close-button" onclick="closeViewModal()">×</span>
+    </div>
+
+    <div id="viewContainer"
+      style="flex: 1; background: var(--bg-tertiary); border: 1px solid var(--border-color); display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: var(--radius-md);">
+      <!-- Content will be injected here -->
+      <p class="text-muted">Loading...</p>
+    </div>
+
+    <div class="form-actions" style="margin-top: 15px; justify-content: flex-end;">
+      <a id="viewDownloadBtn" href="#" class="btn btn-primary">Download</a>
+      <button type="button" class="btn btn-secondary" onclick="closeViewModal()">Close</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', loadResources);
+
+  async function loadResources() {
+    const subjectId = document.getElementById('subjectFilter').value || null;
+    const type = document.getElementById('typeFilter').value || null;
+
+    try {
+      const response = await fetch("{{ url_for('faculty.list_resources') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject_id: subjectId, type: type })
+      });
+      const data = await response.json();
+      renderResources(data.resources);
+    } catch (e) {
+      console.error("Error loading resources:", e);
+    }
+  }
+
+  function renderResources(resources) {
+    const tbody = document.getElementById('resourcesTableBody');
+    if (resources.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" class="text-center">No resources found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = resources.map(r => `
+        <tr>
+            <td>
+                <strong>${r.title}</strong><br>
+                <small class="text-muted">${r.description || ''}</small>
+            </td>
+            <td>${r.subject_name}</td>
+            <td>${formatType(r.type)}</td>
+            <td>${r.uploaded_at}</td>
+            <td>
+                <button class="btn btn-sm btn-secondary" onclick='openViewModal(${JSON.stringify(r)})'>👁️ View</button>
+                <button class="btn btn-sm btn-info" onclick='openUploadModal(${JSON.stringify(r)})'>✏️ Edit</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteResource(${r.id})">🗑️ Delete</button>
+            </td>
+        </tr>
+    `).join('');
+  }
+
+  function formatType(type) {
+    return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  // --- Upload / Edit ---
+  function openUploadModal(resource = null) {
+    const modal = document.getElementById('uploadModal');
+    const form = document.getElementById('uploadForm');
+    modal.style.display = 'flex';
+    form.reset();
+
+    const titleElem = modal.querySelector('h2');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const fileInput = document.getElementById('resFile');
+
+    if (resource) {
+      // Edit Mode
+      titleElem.innerText = 'Edit Resource';
+      submitBtn.innerText = 'Update';
+      document.getElementById('editResourceId').value = resource.id;
+      document.getElementById('resTitle').value = resource.title;
+
+      // Attempt to pre-select subject if possible, otherwise user must re-select
+      if (resource.subject_class_id) document.getElementById('resSubject').value = resource.subject_class_id;
+
+      document.getElementById('resType').value = resource.type;
+      document.getElementById('resDesc').value = resource.description;
+
+      fileInput.required = false; // File optional on edit
+    } else {
+      // Upload Mode
+      titleElem.innerText = 'Upload Resource';
+      submitBtn.innerText = 'Upload';
+      document.getElementById('editResourceId').value = '';
+      fileInput.required = true;
+    }
+  }
+
+  function hideUploadModal() {
+    document.getElementById('uploadModal').style.display = 'none';
+  }
+
+  document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+    formData.append('title', document.getElementById('resTitle').value);
+    formData.append('subject_id', document.getElementById('resSubject').value);
+    formData.append('type', document.getElementById('resType').value);
+    formData.append('description', document.getElementById('resDesc').value);
+    formData.append('file', document.getElementById('resFile').files[0]);
+
+    const editId = document.getElementById('editResourceId').value;
+    if (editId) {
+      formData.append('resource_id', editId);
+    }
+
+    // File is optional if editing
+    const fileInput = document.getElementById('resFile');
+    if (fileInput.files.length > 0) {
+      formData.append('file', fileInput.files[0]);
+    } else if (!editId) {
+      // Required if new
+      alert("Please select a file.");
+      return;
+    }
+
+    try {
+      const url = editId ? "{{ url_for('faculty.update_resource') }}" : "{{ url_for('faculty.upload_resource') }}";
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData
+      });
+      const res = await response.json();
+
+      if (response.ok) {
+        alert(res.message);
+        hideUploadModal();
+        loadResources();
+      } else {
+        alert(res.error);
+      }
+    } catch (e) {
+      alert("Upload failed.");
+    }
+  });
+
+  async function deleteResource(id) {
+    if (!confirm("Delete this resource?")) return;
+
+    try {
+      const response = await fetch("{{ url_for('faculty.delete_resource') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resource_id: id })
+      });
+      const res = await response.json();
+
+      if (response.ok) {
+        loadResources();
+      } else {
+        alert(res.error);
+      }
+    } catch (e) {
+      alert("Delete failed.");
+    }
+  }
+
+
+  // --- View Modal ---
+  function openViewModal(resource) {
+    const modal = document.getElementById('viewModal');
+    const container = document.getElementById('viewContainer');
+    const title = document.getElementById('viewTitle');
+    const downloadBtn = document.getElementById('viewDownloadBtn');
+
+    modal.style.display = 'flex';
+    title.innerText = resource.title;
+    downloadBtn.href = `/faculty/resources/download/${resource.id}`;
+
+    const ext = resource.file_name ? resource.file_name.split('.').pop().toLowerCase() : '';
+    const previewUrl = `/faculty/resources/download/${resource.id}?inline=true`;
+
+    // Iframe supported types
+    const iframeTypes = ['pdf', 'txt', 'html', 'png', 'jpg', 'jpeg', 'gif', 'bmp'];
+
+    if (iframeTypes.includes(ext)) {
+      container.innerHTML = `<iframe src="${previewUrl}" style="width:100%; height:100%; border:none;"></iframe>`;
+    } else {
+      container.innerHTML = `
+            <div style="text-align: center;">
+                <p style="font-size: 3rem; margin-bottom: 1rem;">📄</p>
+                <h3>Preview not available</h3>
+                <p class="text-muted">This file type (.${ext}) cannot be previewed.</p>
+                <a href="${downloadBtn.href}" class="btn btn-primary" style="margin-top: 1rem;">Download File</a>
+            </div>
+         `;
+    }
+  }
+
+  function closeViewModal() {
+    document.getElementById('viewModal').style.display = 'none';
+    document.getElementById('viewContainer').innerHTML = ''; // Create clean state (stop iframe audio/video if any)
+  }
+
+  window.onclick = function (event) {
+    const vModal = document.getElementById('notificationModal');
+    if (vModal && event.target == vModal) vModal.style.display = "none";
+
+    const uModal = document.getElementById('uploadModal');
+    if (uModal && event.target == uModal) hideUploadModal();
+
+    const viewModal = document.getElementById('viewModal');
+    if (viewModal && event.target == viewModal) closeViewModal();
+  }
+</script>
+{% endblock %}

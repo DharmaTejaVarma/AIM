@@ -1,0 +1,392 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard - CampusIQ{% endblock %}
+
+{% block content %}
+<div class="admin-dashboard app-shell">
+  {% set active_page = 'dashboard' %}
+  {% include 'includes/admin_sidebar.html' %}
+
+  <!-- Main Content -->
+  <main class="main">
+    <!-- Top Header Bar -->
+    <header class="topbar">
+      <div style="display: flex; flex-direction: column;">
+        <h2 style="font-size: 1.1rem; margin: 0; font-weight: 600; color: var(--admin-text);">Dashboard</h2>
+        <div style="font-size: 0.85rem; color: var(--admin-text-muted);">
+          <span style="opacity: 0.7;">Home</span> <span style="margin: 0 4px;">/</span> Dashboard
+        </div>
+      </div>
+
+      <div class="user-area" style="gap: 16px;">
+        <button class="notification-btn" title="Theme Toggle"
+          style="width: 48px; height: 48px; border-radius: 50%; background: white; border: 1px solid var(--admin-border); display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--admin-text-muted);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+          </svg>
+        </button>
+        <button class="notification-btn" title="Notifications" onclick="toggleAnnouncements()"
+          style="width: 48px; height: 48px; border-radius: 50%; background: transparent; border: none; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--admin-text-muted);">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+        </button>
+
+        <div class="user-profile-dropdown"
+          style="position: relative; display: flex; align-items: center; gap: 12px; cursor: pointer; background: white; border: 1px solid var(--admin-border); padding: 4px 16px 4px 4px; border-radius: 30px; transition: all 0.2s ease;">
+          <div
+            style="width: 32px; height: 32px; border-radius: 50%; background-color: #1F2A44; color: white; display: flex; align-items: center; justify-content: center; font-size: 0.85rem; font-weight: 600;">
+            AD</div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="font-size: 0.95rem; font-weight: 500; color: var(--admin-text);">Admin</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+              style="color: var(--admin-text-muted);">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </div>
+
+          <!-- Dropdown Menu -->
+          <div id="profileDropdownMenu"
+            style="display: none; position: absolute; top: 120%; right: 0; width: 200px; background: white; border: 1px solid var(--admin-border); border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); z-index: 1000; overflow: hidden; animation: fadeIn 0.1s ease-out;">
+            <ul style="list-style: none; margin: 0; padding: 8px 0;">
+              <li>
+                <a href="#"
+                  style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: var(--admin-text); text-decoration: none; font-size: 0.9rem; transition: background 0.1s;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                  </svg>
+                  Change Password
+                </a>
+              </li>
+              <li>
+                <a href="#"
+                  style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: var(--admin-text); text-decoration: none; font-size: 0.9rem; transition: background 0.1s;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                  Help
+                </a>
+              </li>
+              <li style="border-top: 1px solid var(--admin-border); margin: 4px 0;"></li>
+              <li>
+                <a href="{{ url_for('auth.logout') }}"
+                  style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: var(--error-color); text-decoration: none; font-size: 0.9rem; transition: background 0.1s;">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                    <polyline points="16 17 21 12 16 7"></polyline>
+                    <line x1="21" y1="12" x2="9" y2="12"></line>
+                  </svg>
+                  Logout
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <script>
+      document.addEventListener('DOMContentLoaded', function () {
+        // Row Click Handler
+        document.querySelectorAll('.clickable-row').forEach(row => {
+          row.addEventListener('click', function () {
+            window.location.href = this.dataset.href;
+          });
+        });
+
+        const dropdownTrigger = document.querySelector('.user-profile-dropdown');
+        const menu = document.getElementById('profileDropdownMenu');
+
+        if (dropdownTrigger && menu) {
+          dropdownTrigger.addEventListener('click', function (e) {
+            e.stopPropagation(); // Prevent document click from immediately closing it
+            const isVisible = menu.style.display === 'block';
+            menu.style.display = isVisible ? 'none' : 'block';
+          });
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function (event) {
+          if (menu && menu.style.display === 'block') {
+            if (!dropdownTrigger.contains(event.target)) {
+              menu.style.display = 'none';
+            }
+          }
+        });
+      });
+    </script>
+
+    <section class="content-area">
+      <!-- Welcome Section -->
+      <div class="page-header">
+        <h1>Welcome back, Admin</h1>
+        <p class="page-subtitle">Manage system settings, users, and monitor campus activities</p>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="stats-grid">
+        <!-- Students Card -->
+        <div class="stat-card">
+          <div class="stat-header">
+            <div>
+              <div
+                style="font-size: 0.75rem; font-weight: 600; color: var(--admin-text-muted); letter-spacing: 0.05em; text-transform: uppercase;">
+                Total Students</div>
+              <div class="stat-value"
+                style="font-size: 2.5rem; font-weight: 700; color: var(--admin-primary); margin-top: 4px;">{{
+                total_students }}</div>
+              <div class="stat-subtext" style="font-size: 0.85rem; color: var(--admin-text-muted); margin-top: 4px;">
+                Active enrollments</div>
+            </div>
+            <div class="stat-icon" style="background-color: #E0E7FF; color: var(--admin-primary);">🎓</div>
+          </div>
+          <div
+            style="margin-top: 12px; font-size: 0.85rem; color: var(--success-color); display: flex; align-items: center; gap: 4px;">
+            <span>↑ 4.3%</span> <span style="color: var(--admin-text-muted);">vs last month</span>
+          </div>
+        </div>
+
+        <!-- Faculty Card -->
+        <div class="stat-card">
+          <div class="stat-header">
+            <div>
+              <div
+                style="font-size: 0.75rem; font-weight: 600; color: var(--admin-text-muted); letter-spacing: 0.05em; text-transform: uppercase;">
+                Total Faculty</div>
+              <div class="stat-value"
+                style="font-size: 2.5rem; font-weight: 700; color: var(--admin-primary); margin-top: 4px;">{{
+                total_faculty }}</div>
+              <div class="stat-subtext" style="font-size: 0.85rem; color: var(--admin-text-muted); margin-top: 4px;">
+                Teaching staff</div>
+            </div>
+            <div class="stat-icon" style="background-color: #DCFCE7; color: var(--success-color);">👨‍🏫</div>
+          </div>
+          <div
+            style="margin-top: 12px; font-size: 0.85rem; color: var(--success-color); display: flex; align-items: center; gap: 4px;">
+            <span>↑ 2</span> <span style="color: var(--admin-text-muted);">new this week</span>
+          </div>
+        </div>
+
+        <!-- Departments Card -->
+        <div class="stat-card">
+          <div class="stat-header">
+            <div>
+              <div
+                style="font-size: 0.75rem; font-weight: 600; color: var(--admin-text-muted); letter-spacing: 0.05em; text-transform: uppercase;">
+                Departments</div>
+              <div class="stat-value"
+                style="font-size: 2.5rem; font-weight: 700; color: var(--admin-primary); margin-top: 4px;">{{
+                total_departments }}</div>
+              <div class="stat-subtext" style="font-size: 0.85rem; color: var(--admin-text-muted); margin-top: 4px;">
+                Academic units</div>
+            </div>
+            <div class="stat-icon" style="background-color: #E0F2FE; color: #0EA5E9;">🏢</div>
+          </div>
+          <div style="margin-top: 12px; font-size: 0.85rem; color: var(--admin-text-muted);">
+            Stable
+          </div>
+        </div>
+
+        <!-- Fees Card -->
+        <div class="stat-card">
+          <div class="stat-header">
+            <div>
+              <div
+                style="font-size: 0.75rem; font-weight: 600; color: var(--admin-text-muted); letter-spacing: 0.05em; text-transform: uppercase;">
+                Pending Fees</div>
+              <div class="stat-value"
+                style="font-size: 2.5rem; font-weight: 700; color: var(--admin-primary); margin-top: 4px;">₹{{
+                "{:,.2f}".format(pending_fees) }}</div>
+              <div class="stat-subtext" style="font-size: 0.85rem; color: var(--admin-text-muted); margin-top: 4px;">
+                Total due amount</div>
+            </div>
+            <div class="stat-icon" style="background-color: #FEF3C7; color: #D97706;">💰</div>
+          </div>
+          <div style="margin-top: 12px; font-size: 0.85rem; color: var(--admin-text-muted);">
+            <a href="{{ url_for('admin.fees') }}" style="color: var(--admin-accent); text-decoration: none;">View
+              details →</a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Main Grid -->
+      <div class="d-grid-2">
+        <!-- System Overview (Left Column) -->
+        <div class="dashboard-column">
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title" style="color: var(--admin-primary);">
+                <span style="background: #E0E7FF; padding: 4px; border-radius: 4px; font-size: 0.9em;">📊</span>
+                System Overview
+              </h3>
+              <a href="{{ url_for('admin.departments') }}" class="btn btn-sm btn-outline-secondary">View All
+                Departments</a>
+            </div>
+            <div class="table-container">
+              <table class="data-table admin-table">
+                <thead>
+                  <tr>
+                    <th>Dept</th>
+                    <th class="text-center">Students</th>
+                    <th class="text-center">Faculty</th>
+                    <th style="width: 35%;">Attendance</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for dept in system_overview %}
+                  <tr class="clickable-row"
+                    data-href="{{ url_for('admin.department_details', department_name=dept.name) }}"
+                    style="cursor: pointer;">
+                    <td>
+                      <div style="font-weight: 600; color: var(--admin-primary);">{{ dept.code }}</div>
+                      <div style="font-size: 0.8em; color: var(--admin-text-muted);">{{ dept.name }}</div>
+                    </td>
+                    <td class="text-center" style="font-weight: 500;">{{ dept.students }}</td>
+                    <td class="text-center" style="font-weight: 500;">{{ dept.faculty }}</td>
+                    <td>
+                      {% set bar_color = '#3B82F6' %}
+                      {% if dept.attendance_rate < 75 %}{% set bar_color='#EF4444' %}{% elif dept.attendance_rate < 85
+                        %}{% set bar_color='#F59E0B' %}{% endif %} <div
+                        style="display: flex; align-items: center; gap: 12px;">
+                        <div
+                          style="flex-grow: 1; height: 8px; background: #F1F5F9; border-radius: 4px; overflow: hidden;">
+                          <div
+                            style="height: 100%; border-radius: 4px; --prog-width: {{ dept.attendance_rate }}%; --prog-bg: {{ bar_color }}; width: var(--prog-width); background-color: var(--prog-bg);">
+                          </div>
+                        </div>
+                        <span
+                          style="font-size: 0.85em; font-weight: 600; color: var(--admin-text-muted); width: 35px; text-align: right;">{{
+                          dept.attendance_rate }}%</span>
+            </div>
+            </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent Activities (Right Column) -->
+      <div class="dashboard-column">
+        <div class="card" style="height: 100%;">
+          <div class="card-header">
+            <h3 class="card-title" style="color: var(--admin-primary);">
+              <span style="background: #FEF3C7; padding: 4px; border-radius: 4px; font-size: 0.9em;">🔔</span>
+              Recent Activities
+            </h3>
+          </div>
+          <div class="card-body" style="padding-top: 10px;">
+            {% if recent_activities %}
+            {% for activity in recent_activities %}
+            <div class="activity-item">
+              <div class="activity-avatar-container">
+                <!-- Placeholder Avatar if no user image -->
+                <div class="activity-avatar"
+                  style="display: flex; align-items: center; justify-content: center; background: #E2E8F0; color: #64748B; font-weight: bold; font-size: 0.8rem;">
+                  {{ activity.user_name[0] | upper }}
+                </div>
+              </div>
+              <div class="activity-content">
+                <div style="font-weight: 600; color: var(--admin-primary); font-size: 0.95rem;">
+                  <span style="color: var(--admin-text);">{{ activity.user_name }}</span>
+                  <span style="font-weight: 400; color: var(--admin-text-muted);">{{ activity.description }}</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 4px;">
+                  {{ activity.timestamp }}
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+            {% else %}
+            <div style="text-align: center; padding: 2rem; color: var(--admin-text-muted);">
+              No recent activities
+            </div>
+            {% endif %}
+
+            <!-- View All Link (Optional) -->
+            <div style="margin-top: auto; padding-top: 1rem; text-align: center;">
+              <button class="btn btn-sm btn-outline-secondary" style="width: 100%;">View Activity Log</button>
+            </div>
+          </div>
+        </div>
+      </div>
+</div>
+
+<!-- Footer / System Actions (Subtle) -->
+<div
+  style="margin-top: 4rem; border-top: 1px solid var(--admin-border); padding-top: 1rem; display: flex; justify-content: space-between; align-items: center; color: var(--admin-text-muted); font-size: 0.85rem;">
+  <div>CampusIQ v2.0 • Enterprise Edition</div>
+  <div>
+    <a href="#" onclick="openResetModal()"
+      style="color: var(--error-color); text-decoration: none; font-weight: 500;">Reset System Database</a>
+  </div>
+</div>
+
+</section>
+</main>
+
+<!-- Reset Modal (Kept for functionality) -->
+<div id="resetModal" class="modal"
+  style="display:none; position:fixed; z-index:2000; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.5); backdrop-filter: blur(4px);">
+  <div class="modal-content"
+    style="background-color:#fff; margin:10% auto; padding:32px; border:none; width:450px; border-radius:16px; box-shadow: 0 20px 50px rgba(0,0,0,0.2);">
+    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 24px;">
+      <h2 style="margin: 0; color: var(--error-color); font-size: 1.5rem;">⚠️ High Risk Action</h2>
+      <span class="close" onclick="closeResetModal()"
+        style="color:#94a3b8; font-size:28px; cursor:pointer;">&times;</span>
+    </div>
+
+    <p style="color: var(--text-secondary); margin-bottom: 24px; line-height: 1.6;">
+      You are about to <strong style="color: var(--text-primary);">permanently delete the entire database</strong>.
+      This action cannot be undone and will reset the system to its initial state.
+    </p>
+
+    <div class="form-group">
+      <label>Admin Password Required</label>
+      <input type="password" id="reset-confirm-password" class="form-input"
+        placeholder="Enter your password to confirm">
+    </div>
+
+    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 32px;">
+      <button class="btn btn-secondary" onclick="closeResetModal()">Cancel</button>
+      <button class="btn btn-danger" onclick="confirmReset()">Reset Database</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  function openResetModal() { document.getElementById('resetModal').style.display = "block"; }
+  function closeResetModal() { document.getElementById('resetModal').style.display = "none"; }
+
+  async function confirmReset() {
+    const password = document.getElementById('reset-confirm-password').value;
+    if (!password) { alert("Password required"); return; }
+    if (!confirm("Final Confirmation: Delete everything?")) return;
+
+    try {
+      const response = await fetch('/admin/reset_database', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: password })
+      });
+      const result = await response.json();
+      if (response.ok) { alert(result.message); window.location.reload(); }
+      else { alert("Error: " + result.error); }
+    } catch (error) { alert("Request failed: " + error); }
+  }
+</script>
+</div>
+{% endblock %}

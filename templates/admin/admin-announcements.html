@@ -1,0 +1,247 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Announcements - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'announcements' %}
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Announcements</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div id="announcementsAlert" class="alert" style="display: block;">
+        {% for category, message in messages %}
+        <div class="alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h1>Announcements Management</h1>
+        <p class="page-subtitle">Create, manage, and publish campus-wide announcements</p>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <button class="btn btn-primary" onclick="showAnnouncementModal()">
+            <span class="action-icon">➕</span> Create Announcement
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <form action="{{ url_for('admin.announcements') }}" method="GET" class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Search</label>
+            <input type="text" name="search" class="form-input" placeholder="Title or content..."
+              value="{{ search or '' }}">
+          </div>
+          <div class="filter-group">
+            <label>Audience</label>
+            <select name="audience" class="form-select" onchange="this.form.submit()">
+              <option value="">All Audiences</option>
+              <option value="all" {% if audience=='all' %}selected{% endif %}>All Users</option>
+              <option value="student" {% if audience=='student' %}selected{% endif %}>Students</option>
+              <option value="faculty" {% if audience=='faculty' %}selected{% endif %}>Faculty</option>
+              <option value="admin" {% if audience=='admin' %}selected{% endif %}>Admin</option>
+            </select>
+          </div>
+          <div class="filter-actions-simple">
+            <button type="submit" class="btn btn-primary">Apply</button>
+            {% if search or audience %}
+            <a href="{{ url_for('admin.announcements') }}" class="btn btn-outline-secondary"
+              style="text-decoration:none;">Clear</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-card--blue">
+          <div class="stat-header">
+            <div class="stat-label">Total Announcements</div>
+            <div class="stat-icon">📢</div>
+          </div>
+          <div class="stat-value">{{ total_announcements }}</div>
+          <div class="stat-subtext">Published to date</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-header">
+            <div class="stat-label">Active</div>
+            <div class="stat-icon">🟢</div>
+          </div>
+          <div class="stat-value">{{ total_announcements }}</div>
+          <div class="stat-subtext">Currently visible</div>
+        </div>
+        <div class="stat-card stat-card--sky">
+          <div class="stat-header">
+            <div class="stat-label">Scheduled</div>
+            <div class="stat-icon">🗓️</div>
+          </div>
+          <div class="stat-value">0</div>
+          <div class="stat-subtext">Pending publish</div>
+        </div>
+        <div class="stat-card stat-card--amber">
+          <div class="stat-header">
+            <div class="stat-label">Drafts</div>
+            <div class="stat-icon">📝</div>
+          </div>
+          <div class="stat-value">0</div>
+          <div class="stat-subtext">Awaiting review</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <h3 class="card-title">All Announcements</h3>
+          <span class="badge badge-info">{{ announcements|length }} items</span>
+        </div>
+        <div id="announcementsList" class="timeline-container" style="padding: 1.5rem;">
+          {% for announcement in announcements %}
+          <div class="card" style="margin-bottom: 1rem; border-left: 4px solid var(--primary-color);">
+            <div style="padding: 1.25rem;">
+              <div
+                style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <h4 style="margin: 0; font-size: 1.1rem; color: var(--text-primary);">{{ announcement.title }}</h4>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <span class="badge badge-info">{{ announcement.target_role|title }}</span>
+                  <span style="font-size: 0.8rem; color: var(--text-muted);">{{ announcement.date }}</span>
+                </div>
+              </div>
+              <p style="color: var(--text-secondary); line-height: 1.5; margin-bottom: 1rem;">{{ announcement.content }}
+              </p>
+              <div class="action-buttons" style="justify-content: flex-end;">
+                <button class="btn btn-sm btn-outline-secondary" data-announcement='{{ announcement|tojson }}'
+                  onclick='editAnnouncement(JSON.parse(this.dataset.announcement))'>✏️ Edit</button>
+                <form action="{{ url_for('admin.delete_announcement', id=announcement.id) }}" method="POST"
+                  style="display:inline;"
+                  onsubmit="return confirm('Are you sure you want to delete this announcement?');">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">🗑️ Delete</button>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Create Announcement Modal -->
+<div id="announcementModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideAnnouncementModal()">×</span>
+    <span class="close-button" onclick="hideAnnouncementModal()">×</span>
+    <h2 id="modalTitle">Create Announcement</h2>
+    <form id="announcementForm" action="{{ url_for('admin.add_announcement') }}" method="POST">
+      <div class="form-group">
+        <label for="title">Title</label>
+        <input type="text" id="title" name="title" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="content">Content</label>
+        <textarea id="content" name="content" class="form-textarea" rows="5" required></textarea>
+      </div>
+      <div class="form-group">
+        <label for="target_audience">Target Audience</label>
+        <select id="target_audience" name="target_audience" class="form-select" required>
+          <option value="all">All Users</option>
+          <option value="student">Students</option>
+          <option value="faculty">Faculty</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="department">Target Department</label>
+        <select id="department" name="department" class="form-select">
+          <option value="">All Departments</option>
+          {% for dept in departments %}
+          <option value="{{ dept.name }}">{{ dept.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="priority">Priority</label>
+        <select id="priority" name="priority" class="form-select">
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="date">Date</label>
+        <input type="date" id="date" name="date" class="form-input" required>
+      </div>
+      <div class="form-group">
+        <label for="expires_at">Expires At</label>
+        <input type="date" id="expires_at" name="expires_at" class="form-input">
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideAnnouncementModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="submitButton">Publish</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function showAnnouncementModal() {
+    document.getElementById('announcementModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Create Announcement';
+    document.getElementById('announcementForm').action = "{{ url_for('admin.add_announcement') }}";
+    document.getElementById('announcementForm').reset();
+    document.getElementById('submitButton').innerText = 'Publish';
+
+    // Set default date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date').value = today;
+  }
+
+  function hideAnnouncementModal() {
+    document.getElementById('announcementModal').style.display = 'none';
+  }
+
+  function editAnnouncement(announcement) {
+    document.getElementById('announcementModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Edit Announcement';
+    document.getElementById('announcementForm').action = `/admin/announcements/edit/${announcement.id}`;
+    document.getElementById('submitButton').innerText = 'Save Changes';
+
+    document.getElementById('title').value = announcement.title;
+    document.getElementById('content').value = announcement.content;
+    document.getElementById('target_audience').value = announcement.target_audience;
+    document.getElementById('department').value = announcement.department || '';
+    document.getElementById('priority').value = announcement.priority || 'medium'; // Default to medium if not set
+    document.getElementById('date').value = announcement.date; // Assuming date is in YYYY-MM-DD format
+    document.getElementById('expires_at').value = announcement.expires_at || ''; // Assuming expires_at is in YYYY-MM-DD format
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function (event) {
+    if (event.target == document.getElementById('announcementModal')) {
+      hideAnnouncementModal();
+    }
+  }
+</script>
+
+
+</div>
+{% endblock %}

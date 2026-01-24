@@ -1,0 +1,694 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Faculty - CampusIQ{% endblock %}
+
+{% block content %}
+{% set active_page = 'faculty' %}
+<div id="app" class="app-shell">
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Faculty Management</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn">🔔</button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div id="facultyAlert" class="alert" style="display: block;">
+        {% for category, message in messages %}
+        <div class="alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h1>Faculty Management</h1>
+        <p class="page-subtitle">Manage faculty members, their details, and assignments</p>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card stat-card--blue">
+          <div class="stat-header">
+            <div class="stat-label">Total Faculty</div>
+            <div class="stat-icon">👨‍🏫</div>
+          </div>
+          <div class="stat-value">{{ faculty_members|length }}</div>
+          <div class="stat-subtext">Teaching staff count</div>
+        </div>
+        <div class="stat-card stat-card--green">
+          <div class="stat-header">
+            <div class="stat-label">Primary Branches</div>
+            <div class="stat-icon">🏢</div>
+          </div>
+          <div class="stat-value">{{ departments|length }}</div>
+          <div class="stat-subtext">Departments covered</div>
+        </div>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <button class="btn btn-primary" onclick="showFacultyModal()">
+            <span class="action-icon">➕</span> Add New Faculty
+          </button>
+          <button class="btn btn-outline-secondary" onclick="showImportModal()">
+            <span class="action-icon">📥</span> Import CSV
+          </button>
+          <button class="btn btn-outline-secondary" onclick="exportFaculty()">
+            <span class="action-icon">📤</span> Export CSV
+          </button>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <form action="{{ url_for('admin.faculty') }}" method="GET" class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Search</label>
+            <input id="global-search" name="search" type="text" class="form-input" placeholder="Name or ID..."
+              value="{{ search or '' }}" />
+          </div>
+          <div class="filter-group">
+            <label>Department</label>
+            <select name="department" class="form-select" onchange="this.form.submit()">
+              <option value="">All Departments</option>
+              {% for dept in departments %}
+              <option value="{{ dept.id }}" {% if department==dept.id|string %}selected{% endif %}>
+                {{ dept.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Designation</label>
+            <select name="designation" class="form-select" onchange="this.form.submit()">
+              <option value="">All Designations</option>
+              {% for desig in ['Professor', 'Associate Professor', 'Assistant Professor', 'Lecturer'] %}
+              <option value="{{ desig }}" {% if designation==desig %}selected{% endif %}>{{ desig }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-actions-simple">
+            <button type="submit" class="btn btn-primary">Apply</button>
+            {% if search or department or designation %}
+            <a href="{{ url_for('admin.faculty') }}" class="btn btn-outline-secondary"
+              style="text-decoration:none;">Clear</a>
+            {% endif %}
+          </div>
+        </form>
+      </div>
+
+      <!-- Bulk Actions Bar -->
+      <div id="bulkActions" class="action-bar"
+        style="display: none; margin-top: 1rem; background-color: var(--bg-tertiary); border-color: var(--primary-color);">
+        <div class="left-actions">
+          <input type="checkbox" id="selectAllHeader" onchange="toggleSelectAll()">
+          <label for="selectAllHeader" style="font-weight: 600;">Select All (Current Page)</label>
+          <span class="badge badge-info" id="selectedCount">0 faculty selected</span>
+        </div>
+        <div class="right-actions">
+          <button class="btn btn-danger btn-sm" onclick="bulkDeleteFaculty()">
+            <span class="action-icon">🗑️</span> Bulk Delete
+          </button>
+          <button class="btn btn-secondary btn-sm" onclick="clearSelection()">
+            <span class="action-icon">✖️</span> Clear
+          </button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top: 2rem;">
+        <div class="card-header">
+          <h3 class="card-title">Faculty Records</h3>
+          <span class="badge badge-info">{{ faculty_members|length }} faculty</span>
+        </div>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th>
+                <th>Faculty ID</th>
+                <th>Name</th>
+                <th>Department</th>
+                <th>Designation</th>
+                <th>Status</th>
+                <th class="text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for faculty in faculty_members %}
+              <tr>
+                <td><input type="checkbox" class="faculty-checkbox" value="{{ faculty.id }}"
+                    onchange="updateBulkActionState()"></td>
+                <td style="font-weight: 600;">{{ faculty.faculty_id }}</td>
+                <td>{{ faculty.name }}</td>
+                <td><span class="badge badge-secondary">{{ faculty.department }}</span></td>
+                <td>{{ faculty.designation }}</td>
+                <td>
+                  <span class="badge badge-{{ 'success' if faculty.status == 'active' else 'secondary' }}">
+                    {{ faculty.status|capitalize }}
+                  </span>
+                </td>
+                <td>
+                  <div class="action-buttons" style="justify-content: flex-end;">
+                    <a href="{{ url_for('admin.view_faculty_profile', id=faculty.id) }}"
+                      class="btn btn-sm btn-outline-info" title="View Profile" style="text-decoration: none;">👁️
+                      View</a>
+                    <button class="btn btn-sm btn-outline-secondary" title="Edit" data-faculty='{{ faculty|tojson }}'
+                      onclick='editFaculty(JSON.parse(this.dataset.faculty))'>✏️ Edit</button>
+                    <form action="{{ url_for('admin.delete_faculty', id=faculty.id) }}" method="POST"
+                      style="display:inline;"
+                      onsubmit="return confirm('Are you sure you want to delete this faculty member?');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">🗑️ Delete</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Add Faculty Modal -->
+<div id="facultyModal" class="modal">
+  <div class="modal-content" style="max-width: 800px;">
+    <span class="close-button" onclick="hideFacultyModal()">×</span>
+    <h2 id="modalTitle">Add Faculty</h2>
+    <form id="facultyForm" action="{{ url_for('admin.add_faculty') }}" method="POST">
+      <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <!-- Personal Details -->
+        <div class="form-group">
+          <label for="name">Full Name</label>
+          <input type="text" id="name" name="name" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="faculty_id">Faculty ID</label>
+          <input type="text" id="faculty_id" name="faculty_id" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="phone_number">Phone Number</label>
+          <input type="text" id="phone_number" name="phone_number" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="joining_date">Joining Date</label>
+          <input type="date" id="joining_date" name="joining_date" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="gender">Gender</label>
+          <select id="gender" name="gender" class="form-select">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+
+        <!-- Professional Details -->
+        <div class="form-group">
+          <label for="department">Department</label>
+          <select id="department" name="department" class="form-select" required>
+            <option value="">Select Department</option>
+            {% for dept in departments %}
+            <option value="{{ dept.id }}">{{ dept.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="designation">Designation</label>
+          <select id="designation" name="designation" class="form-select" required>
+            <option value="">Select Designation</option>
+            <option value="Professor">Professor</option>
+            <option value="Associate Professor">Associate Professor</option>
+            <option value="Assistant Professor">Assistant Professor</option>
+            <option value="Lecturer">Lecturer</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="qualification">Qualification</label>
+          <input type="text" id="qualification" name="qualification" class="form-input">
+        </div>
+        <div class="form-group">
+          <label for="experience">Experience (Years)</label>
+          <input type="number" id="experience" name="experience" class="form-input" min="0">
+        </div>
+        <div class="form-group">
+          <label for="status">Status</label>
+          <select id="status" name="status" class="form-select">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="on_leave">On Leave</option>
+          </select>
+        </div>
+
+        <!-- Address -->
+        <div class="form-group" style="grid-column: span 2;">
+          <label for="address">Address</label>
+          <textarea id="address" name="address" class="form-textarea" rows="2"></textarea>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideFacultyModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Faculty</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Import Faculty Modal -->
+<div id="importModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideImportModal()">×</span>
+    <h2>Import Faculty from CSV</h2>
+    <div class="alert alert-info">
+      <strong>Note:</strong> CSV must contain 'name', 'email', 'faculty_id', 'department', 'designation'. Optional:
+      'phone', 'qualification', 'experience', 'address', 'joining_date', 'gender', 'status', 'username', 'password'.
+      <button class="btn btn-secondary btn-sm" onclick="downloadTemplate()" style="margin-left: 10px;">Download
+        Template</button>
+    </div>
+    <div class="form-group">
+      <label for="csvFile">Upload CSV File</label>
+      <input type="file" id="csvFile" class="form-input" accept=".csv" onchange="handleFileSelect(event)">
+    </div>
+    <div id="importPreview" class="table-container"
+      style="display: none; max-height: 200px; overflow-y: auto; margin-bottom: 1.25rem;">
+      <h4>CSV Preview (First 5 rows)</h4>
+      <table class="data-table">
+        <thead>
+          <tr id="previewHeader"></tr>
+        </thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+    <div id="importResults" style="display: none; margin-top: 1.25rem;">
+      <div class="alert" id="importAlert">
+        <strong>Import Status:</strong>
+      </div>
+      <div id="importStats" class="dashboard-card">
+        <!-- Import results populated by JS -->
+      </div>
+    </div>
+    <div id="importProgressBarContainer" style="display: none; margin-top: 15px;">
+      <div class="progress" style="height: 20px; background-color: #e9ecef; border-radius: 4px; overflow: hidden;">
+        <div id="importProgressBar" class="progress-bar" role="progressbar"
+          style="width: 0%; height: 100%; background-color: #0d6efd; color: white; text-align: center; line-height: 20px; transition: width 0.3s ease;">
+          0%</div>
+      </div>
+      <div id="importProgressText" class="text-center mt-2" style="font-size: 0.9em; color: #6c757d;">Preparing...
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-secondary" onclick="hideImportModal()">Close</button>
+      <button type="button" id="importBtn" class="btn btn-primary" onclick="importFaculty()" disabled>Import
+        Data</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // --- Faculty Modal Functions ---
+  function showFacultyModal() {
+    document.getElementById('facultyModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Add Faculty';
+    document.getElementById('facultyForm').action = "{{ url_for('admin.add_faculty') }}";
+    document.getElementById('facultyForm').reset();
+    document.getElementById('status').value = 'active';
+  }
+
+  function hideFacultyModal() {
+    document.getElementById('facultyModal').style.display = 'none';
+  }
+
+  function editFaculty(faculty) {
+    document.getElementById('facultyModal').style.display = 'block';
+    document.getElementById('modalTitle').innerText = 'Edit Faculty';
+    document.getElementById('facultyForm').action = `/admin/faculty/edit/${faculty.id}`;
+
+    document.getElementById('name').value = faculty.name;
+    document.getElementById('email').value = faculty.email;
+    document.getElementById('faculty_id').value = faculty.faculty_id;
+    document.getElementById('phone_number').value = faculty.phone || '';
+    document.getElementById('designation').value = faculty.designation;
+    document.getElementById('qualification').value = faculty.qualification || '';
+    document.getElementById('experience').value = faculty.experience;
+    document.getElementById('address').value = faculty.address || '';
+    document.getElementById('joining_date').value = faculty.joining_date || '';
+    document.getElementById('gender').value = faculty.gender || '';
+    document.getElementById('status').value = faculty.status || 'active';
+
+    // Handle department selection by matching text since we store department name
+    const deptSelect = document.getElementById('department');
+    for (let i = 0; i < deptSelect.options.length; i++) {
+      if (deptSelect.options[i].text === faculty.department) {
+        deptSelect.selectedIndex = i;
+        break;
+      }
+    }
+  }
+
+  // --- Import/Export Functions ---
+  let importData = [];
+
+  function showImportModal() {
+    document.getElementById('importModal').style.display = 'block';
+    document.getElementById('importResults').style.display = 'none';
+    document.getElementById('importBtn').style.display = 'block';
+    document.getElementById('importBtn').disabled = true;
+    document.getElementById('csvFile').value = '';
+    document.getElementById('importPreview').style.display = 'none';
+    importData = [];
+  }
+
+  function hideImportModal() {
+    document.getElementById('importModal').style.display = 'none';
+  }
+
+  function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (file.type !== 'text/csv' && !file.name.endsWith('.csv')) {
+      alert('Please select a CSV file');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      parseCSV(e.target.result);
+    };
+    reader.readAsText(file);
+  }
+
+  function parseCSV(csvText) {
+    const lines = csvText.split(/\r?\n/).filter(line => line.trim());
+    if (lines.length < 2) {
+      alert('CSV file must contain at least a header row and one data row');
+      return;
+    }
+
+    const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+    const requiredHeaders = ['name', 'email', 'faculty_id', 'department', 'designation'];
+    const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
+
+    if (missingHeaders.length > 0) {
+      alert(`Missing required columns: ${missingHeaders.join(', ')}`);
+      return;
+    }
+
+    importData = lines.slice(1).map(line => {
+      const values = parseCSVLine(line);
+      const faculty = {};
+      headers.forEach((header, index) => {
+        faculty[header] = values[index] || '';
+      });
+      return faculty;
+    });
+
+    showImportPreview();
+    document.getElementById('importBtn').disabled = false;
+  }
+
+  function parseCSVLine(text) {
+    const result = [];
+    let cell = '';
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        result.push(cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+        cell = '';
+      } else {
+        cell += char;
+      }
+    }
+    result.push(cell.trim().replace(/^"|"$/g, '').replace(/""/g, '"'));
+    return result;
+  }
+
+  function showImportPreview() {
+    const preview = document.getElementById('importPreview');
+    const previewHeader = document.getElementById('previewHeader');
+    const previewBody = document.getElementById('previewBody');
+
+    if (importData.length === 0) return;
+
+    preview.style.display = 'block';
+    const headers = Object.keys(importData[0]);
+    previewHeader.innerHTML = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
+
+    const previewRows = importData.slice(0, 5);
+    previewBody.innerHTML = previewRows.map(faculty => `
+        <tr>${headers.map(h => `<td>${faculty[h]}</td>`).join('')}</tr>
+      `).join('');
+  }
+
+  function importFaculty() {
+    if (importData.length === 0) return;
+
+    const importModal = document.getElementById('importModal');
+    const actionsDiv = importModal.querySelector('.modal-actions');
+    const progressBarContainer = document.getElementById('importProgressBarContainer');
+    const progressBar = document.getElementById('importProgressBar');
+    const progressText = document.getElementById('importProgressText');
+
+    const stats = document.getElementById('importStats');
+    const results = document.getElementById('importResults');
+    const alertDiv = document.getElementById('importAlert');
+
+    // Setup UI for Progress
+    actionsDiv.style.display = 'none';
+    progressBarContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    progressBar.innerText = '0%';
+    progressText.innerText = `Preparing to import ${importData.length} records...`;
+
+    // Reset previous results
+    results.style.display = 'none';
+    stats.innerHTML = '';
+
+    let progress = 0;
+    const interval = setInterval(() => {
+      if (progress < 90) {
+        progress += Math.floor(Math.random() * 10) + 5;
+        if (progress > 90) progress = 90;
+        progressBar.style.width = `${progress}%`;
+        progressBar.innerText = `${progress}%`;
+        progressText.innerText = `Importing data...`;
+      }
+    }, 200);
+
+    fetch("{{ url_for('admin.import_faculty') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(importData)
+    })
+      .then(response => response.json())
+      .then(data => {
+        clearInterval(interval);
+        progressBar.style.width = '100%';
+        progressBar.innerText = '100%';
+        progressText.innerText = 'Import Complete!';
+
+        setTimeout(() => {
+          // Restore UI
+          actionsDiv.style.display = 'flex'; // Restore buttons
+          progressBarContainer.style.display = 'none'; // Hide bar
+
+          const results = document.getElementById('importResults');
+          const stats = document.getElementById('importStats');
+          const alertDiv = document.getElementById('importAlert');
+
+          results.style.display = 'block';
+
+          if (data.error) {
+            alertDiv.className = 'alert alert-danger';
+            alertDiv.innerHTML = `<strong>Error:</strong> ${data.error}`;
+            stats.innerHTML = '';
+          } else {
+            let html = `<div>Successfully imported: ${data.success_count} faculty members</div>`;
+            if (data.created_count !== undefined && data.updated_count !== undefined) {
+              html += `<div class="text-muted" style="font-size: 0.9em;">(Created: ${data.created_count}, Updated: ${data.updated_count})</div>`;
+            }
+
+            // Handle Warnings
+            if (data.warnings && data.warnings.length > 0) {
+              let warningHtml = `<div class="alert alert-warning" style="margin-top: 10px;">
+                        <strong>Import completed with warnings:</strong>
+                        <ul>${data.warnings.map(w => `<li>${w}</li>`).join('')}</ul>
+                    </div>`;
+              html += warningHtml;
+            }
+
+            // Handle Errors
+            if (data.errors && data.errors.length > 0) {
+              alertDiv.className = 'alert alert-warning'; // Use warning color if partial success
+              alertDiv.innerHTML = `<strong>Import completed with errors!</strong>`;
+              html += `<div style="color: red; margin-top: 10px;">Errors: ${data.errors.length}</div>`;
+              html += `<ul>${data.errors.map(e => `<li>${e}</li>`).join('')}</ul>`;
+            } else {
+              alertDiv.className = 'alert alert-success';
+              alertDiv.innerHTML = `<strong>${data.message}</strong>`;
+            }
+            stats.innerHTML = html;
+
+            if (data.success_count > 0) {
+              setTimeout(() => window.location.reload(), 3000);
+            }
+          }
+        }, 500);
+      })
+      .catch(error => {
+        clearInterval(interval);
+        console.error('Error:', error);
+        alert('An error occurred during import.');
+        actionsDiv.style.display = 'flex';
+        progressBarContainer.style.display = 'none';
+      });
+  }
+
+  function downloadTemplate() {
+    const template = `name,email,faculty_id,department,designation,phone,qualification,experience,address,joining_date,gender,username,password
+Dr. Alice,alice@example.com,FAC001,Computer Science & Engineering,Professor,9876543210,PhD,10,"123 Main St",2015-06-01,Female,alice.prof,pass123`;
+    const blob = new Blob([template], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'faculty_import_template.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  function exportFaculty() {
+    const table = document.querySelector('.data-table');
+    let csv = [];
+    const rows = table.querySelectorAll('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+      const row = [], cols = rows[i].querySelectorAll('td, th');
+
+      for (let j = 0; j < cols.length - 1; j++) { // Skip Actions column
+        let data = cols[j].innerText.replace(/(\r\n|\n|\r)/gm, '').replace(/(\s\s)/gm, ' ');
+        data = data.replace(/"/g, '""');
+        row.push('"' + data + '"');
+      }
+      csv.push(row.join(','));
+    }
+
+    const csvFile = new Blob([csv.join('\n')], { type: 'text/csv' });
+    const downloadLink = document.createElement('a');
+    downloadLink.download = `faculty_export_${new Date().toISOString().split('T')[0]}.csv`;
+    downloadLink.href = window.URL.createObjectURL(csvFile);
+    downloadLink.style.display = 'none';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+  }
+
+  // --- Bulk Actions Functions ---
+  function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const selectAllHeader = document.getElementById('selectAllHeader');
+    const checkboxes = document.querySelectorAll('.faculty-checkbox');
+
+    // Sync header checkbox if triggered from table header
+    if (event.target === selectAll) {
+      selectAllHeader.checked = selectAll.checked;
+    } else if (event.target === selectAllHeader) {
+      selectAll.checked = selectAllHeader.checked;
+    }
+
+    const isChecked = event.target.checked;
+    checkboxes.forEach(cb => cb.checked = isChecked);
+    updateBulkActionState();
+  }
+
+  function updateBulkActionState() {
+    const checkboxes = document.querySelectorAll('.faculty-checkbox:checked');
+    const count = checkboxes.length;
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedCount = document.getElementById('selectedCount');
+
+    selectedCount.innerText = `${count} faculty selected`;
+
+    if (count > 0) {
+      bulkActions.style.display = 'flex';
+    } else {
+      bulkActions.style.display = 'none';
+      document.getElementById('selectAll').checked = false;
+      document.getElementById('selectAllHeader').checked = false;
+    }
+  }
+
+  function clearSelection() {
+    const checkboxes = document.querySelectorAll('.faculty-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    updateBulkActionState();
+  }
+
+  function bulkDeleteFaculty() {
+    const checkboxes = document.querySelectorAll('.faculty-checkbox:checked');
+    const count = checkboxes.length;
+
+    if (count === 0) return;
+
+    if (!confirm(`Are you sure you want to DELETE ${count} faculty members? This action cannot be undone.`)) return;
+
+    const facultyIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+
+    fetch("{{ url_for('admin.bulk_delete_faculty') }}", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        faculty_ids: facultyIds
+      })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.error) {
+          alert('Error: ' + data.error);
+        } else {
+          alert(data.message);
+          window.location.reload();
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred during bulk delete.');
+      });
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function (event) {
+    if (event.target == document.getElementById('facultyModal')) {
+      hideFacultyModal();
+    }
+    if (event.target == document.getElementById('importModal')) {
+      hideImportModal();
+    }
+  }
+</script>
+
+
+</div>
+{% endblock %}

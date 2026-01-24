@@ -1,0 +1,70 @@
+FAILED to insert Dr. Rajesh Kumar. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Dr. Anita Singh. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Prof. Suresh Reddy. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Mr. John Doe. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Ms. Jane Smith. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Dr. Emily White. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Mr. Michael Brown. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Mrs. Sarah Lee. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Dr. David Green. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Ms. Lisa Black. Error: column "updated_at" of relation "faculty" does not exist
+LINE 4: ...t_id, department, experience, status, created_at, updated_at
+                                                             ^
+
+FAILED to insert Dr. Rajesh Kumar. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Dr. Rajesh Kumar, rajesh.k@example.com, FAC121, Electronics & Communication Engineering, Professor, 9876561091, null, 6, null, null, null, active, 2026-01-14 19:36:55.446234+00, 21, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Dr. Anita Singh. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Dr. Anita Singh, anita.s@example.com, FAC121, Computer Science & Engineering, Associate Professor, 9876511196, null, 1, null, null, null, active, 2026-01-14 19:36:55.446234+00, 13, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Prof. Suresh Reddy. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Prof. Suresh Reddy, suresh.r@example.com, FAC121, Artificial Intelligence & Data Science, Head of Department, 9876581230, null, 2, null, null, null, active, 2026-01-14 19:36:55.446234+00, 15, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Mr. John Doe. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Mr. John Doe, john.doe@example.com, FAC121, Civil Engineering, Assistant Professor, 9876521368, null, 6, null, null, null, active, 2026-01-14 19:36:55.446234+00, 11, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Ms. Jane Smith. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Ms. Jane Smith, jane.smith@example.com, FAC121, Information Technology, Assistant Professor, 9876513666, null, 5, null, null, null, active, 2026-01-14 19:36:55.446234+00, 16, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Dr. Emily White. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Dr. Emily White, emily.w@example.com, FAC121, Electrical & Electronics Engineering, Professor, 9876599192, null, 16, null, null, null, active, 2026-01-14 19:36:55.446234+00, 17, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Mr. Michael Brown. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Mr. Michael Brown, michael.b@example.com, FAC121, Computer Science & Engineering (Artificial Intelligence), Lab Assistant, 9876542144, null, 9, null, null, null, active, 2026-01-14 19:36:55.446234+00, 20, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Mrs. Sarah Lee. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Mrs. Sarah Lee, sarah.l@example.com, FAC121, Electronics & Communication Engineering, Associate Professor, 9876556735, null, 12, null, null, null, active, 2026-01-14 19:36:55.446234+00, 21, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Dr. David Green. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Dr. David Green, david.g@example.com, FAC121, Civil Engineering, Professor, 9876520398, null, 19, null, null, null, active, 2026-01-14 19:36:55.446234+00, 11, 2026-01-14 19:36:55.446234).
+
+FAILED to insert Ms. Lisa Black. Error: null value in column "user_id" of relation "faculty" violates not-null constraint
+DETAIL:  Failing row contains (121, null, Ms. Lisa Black, lisa.b@example.com, FAC121, Computer Science & Engineering (Artificial Intelligence), Assistant Professor, 9876578534, null, 8, null, null, null, active, 2026-01-14 19:36:55.446234+00, 20, 2026-01-14 19:36:55.446234).
+

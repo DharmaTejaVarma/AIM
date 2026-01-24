@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - CampusIQ</title>
+  <link rel="stylesheet" href="../css/main.css">
+</head>
+<body>
+  <div id="app" class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">CampusIQ</div>
+      <nav>
+        <a href="./admin-dashboard.html" class="nav-item active">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="./admin-students.html" class="nav-item">
+          <span class="nav-icon">🎓</span>
+          Students
+        </a>
+        <a href="./admin-faculty.html" class="nav-item">
+          <span class="nav-icon">👨‍🏫</span>
+          Faculty
+        </a>
+        <a href="./admin-departments.html" class="nav-item">
+          <span class="nav-icon">🏢</span>
+          Departments
+        </a>
+        <a href="./admin-subjects.html" class="nav-item">
+          <span class="nav-icon">📚</span>
+          Subjects
+        </a>
+        <a href="./admin-subject-allocation.html" class="nav-item">
+          <span class="nav-icon">📝</span>
+          Subject Allocation
+        </a>
+        <a href="./admin-timetable.html" class="nav-item">
+          <span class="nav-icon">🗓️</span>
+          Timetable
+        </a>
+        <a href="./admin-external-marks.html" class="nav-item">
+          <span class="nav-icon">💯</span>
+          External Marks
+        </a>
+        <a href="./admin-fees.html" class="nav-item">
+          <span class="nav-icon">💰</span>
+          Fees
+        </a>
+        <a href="./admin-announcements.html" class="nav-item">
+          <span class="nav-icon">📢</span>
+          Announcements
+        </a>
+        <a href="./admin-analytics.html" class="nav-item">
+          <span class="nav-icon">📈</span>
+          Analytics
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <div class="user-profile">
+          <div class="avatar">👤</div>
+          <div class="user-info">
+            <div class="user-name" id="current-user">Admin User</div>
+            <div class="user-role" id="current-role">Administrator</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="search-wrap">
+          <input id="admin-search" type="text" placeholder="Search users, reports, settings..." />
+          <button class="search-btn">🔍</button>
+        </div>
+        <div class="user-area">
+          <button class="notification-btn">🔔</button>
+          <button class="logout-btn" onclick="window.handleLogout()">Logout</button>
+        </div>
+      </header>
+
+      <section class="content-area">
+        <div class="page-header">
+          <h1>Admin Dashboard</h1>
+          <p class="page-subtitle">Manage system settings, users, and monitor campus activities</p>
+        </div>
+
+        <div class="profile-tabs"> <!-- Reusing profile-tabs for admin dashboard tabs -->
+          <button class="tab-btn active" data-tab="overview">Overview</button>
+          <button class="tab-btn" data-tab="users">User Management</button>
+          <button class="tab-btn" data-tab="reports">Reports</button>
+          <button class="tab-btn" data-tab="settings">Settings</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div class="tab-content active" id="overview-tab">
+          <div class="stats-grid">
+            <div class="stat-card">
+              <div class="stat-icon">🎓</div>
+              <div class="stat-content">
+                <div class="stat-label">Total Students</div>
+                <div class="stat-value" id="totalStudents">--</div>
+                <div class="stat-trend">Active enrollments</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">👨‍🏫</div>
+              <div class="stat-content">
+                <div class="stat-label">Total Faculty</div>
+                <div class="stat-value" id="totalFaculty">--</div>
+                <div class="stat-trend">Teaching staff</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">🏢</div>
+              <div class="stat-content">
+                <div class="stat-label">Departments</div>
+                <div class="stat-value" id="totalDepartments">--</div>
+                <div class="stat-trend">Academic units</div>
+              </div>
+            </div>
+            
+            <div class="stat-card">
+              <div class="stat-icon">💰</div>
+              <div class="stat-content">
+                <div class="stat-label">Pending Fees</div>
+                <div class="stat-value" id="pendingFees">--</div>
+                <div class="stat-trend">Total due amount</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-grid">
+            <div class="dashboard-card">
+              <h3>Recent Activities</h3>
+              <div id="recentActivities" class="activity-list">
+                <!-- Activities populated by JS -->
+              </div>
+            </div>
+
+            <div class="dashboard-card">
+              <h3>System Overview</h3>
+              <div class="table-container">
+                <table class="data-table">
+                  <thead>
+                    <tr>
+                      <th>Department</th>
+                      <th>Students</th>
+                      <th>Faculty</th>
+                      <th>Attendance</th>
+                      <th>Fees</th>
+                    </tr>
+                  </thead>
+                  <tbody id="systemOverview">
+                    <!-- System overview data populated by JS -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- User Management Tab -->
+        <div class="tab-content" id="users-tab">
+          <div class="action-bar">
+            <div class="left-actions">
+              <button class="btn btn-primary" onclick="window.location.href='./admin-students.html?action=add'">
+                <span class="action-icon">➕</span>
+                Add Student
+              </button>
+              <button class="btn btn-primary" onclick="window.location.href='./admin-faculty.html?action=add'">
+                <span class="action-icon">➕</span>
+                Add Faculty
+              </button>
+              <button class="btn btn-secondary" onclick="window.location.href='./admin-students.html?action=import'">
+                <span class="action-icon">📥</span>
+                Import Students
+              </button>
+              <button class="btn btn-secondary" onclick="window.location.href='./admin-faculty.html?action=import'">
+                <span class="action-icon">📥</span>
+                Import Faculty
+              </button>
+            </div>
+          </div>
+          <div class="alert alert-info">
+            User management is handled via the dedicated <a href="./admin-students.html" class="text-info" style="text-decoration: underline;">Students</a> and <a href="./admin-faculty.html" class="text-info" style="text-decoration: underline;">Faculty</a> pages.
+          </div>
+        </div>
+
+        <!-- Reports Tab -->
+        <div class="tab-content" id="reports-tab">
+          <div class="dashboard-grid"> <!-- Using dashboard-grid for layout -->
+            <div class="dashboard-card">
+              <h3>Student Performance Report</h3>
+              <p class="text-muted">Comprehensive analysis of student grades and attendance trends.</p>
+              <button class="btn btn-primary" onclick="window.location.href='./admin-analytics.html'">Generate Report</button>
+            </div>
+            <div class="dashboard-card">
+              <h3>Faculty Workload Report</h3>
+              <p class="text-muted">Detailed overview of faculty teaching hours and course distribution.</p>
+              <button class="btn btn-primary" onclick="window.location.href='./admin-analytics.html'">Generate Report</button>
+            </div>
+            <div class="dashboard-card">
+              <h3>Fee Collection Report</h3>
+              <p class="text-muted">Detailed report on fee collection status and outstanding dues.</p>
+              <button class="btn btn-primary" onclick="window.location.href='./admin-fees.html'">View Report</button>
+            </div>
+            <div class="dashboard-card">
+              <h3>System Usage & Audit Log</h3>
+              <p class="text-muted">Platform usage statistics, user engagement, and activity logs.</p>
+              <button class="btn btn-primary" onclick="alert('Audit log report coming soon!')">View Report</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div class="tab-content" id="settings-tab">
+          <div class="dashboard-card full-width">
+            <h3>System Configuration</h3>
+            <div class="form-group">
+              <label for="academicYearSetting">Academic Year</label>
+              <select id="academicYearSetting" class="form-select">
+                <option>2024-2025</option>
+                <option>2023-2024</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="defaultLanguageSetting">Default Language</label>
+              <select id="defaultLanguageSetting" class="form-select">
+                <option>English</option>
+                <option>Spanish</option>
+              </select>
+            </div>
+            <div class="form-group checkbox-group">
+              <input type="checkbox" id="emailNotificationsSetting" checked>
+              <label for="emailNotificationsSetting">Enable Email Notifications</label>
+            </div>
+            <div class="modal-actions" style="border-top: none; padding-top: 0;">
+              <button class="btn btn-primary">Save Settings</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Scripts -->
+  <script src="../js/database.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/admin-dashboard.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Setup tab functionality
+      setupTabs();
+    });
+
+    function setupTabs() {
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      const tabContents = document.querySelectorAll('.tab-content');
+
+      tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const targetTab = btn.dataset.tab;
+          
+          // Remove active classes
+          tabBtns.forEach(b => b.classList.remove('active'));
+          tabContents.forEach(c => c.classList.remove('active'));
+          
+          // Add active classes
+          btn.classList.add('active');
+          document.getElementById(targetTab + '-tab').classList.add('active');
+        });
+      });
+    }
+  </script>
+</body>
+</html>

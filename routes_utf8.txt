@@ -1,0 +1,81 @@
+Listing all registered routes:
+------------------------------------------------------------
+Name: openapi                        Path: /openapi.json                                      Methods: {'HEAD', 'GET'}
+Name: swagger_ui_html                Path: /docs                                              Methods: {'HEAD', 'GET'}
+Name: swagger_ui_redirect            Path: /docs/oauth2-redirect                              Methods: {'HEAD', 'GET'}
+Name: redoc_html                     Path: /redoc                                             Methods: {'HEAD', 'GET'}
+Name: login                          Path: /api/login                                         Methods: {'POST'}
+Name: auth.logout                    Path: /api/logout                                        Methods: {'GET'}
+Name: health_check                   Path: /api/health                                        Methods: {'GET'}
+Name: admin.dashboard                Path: /admin/dashboard                                   Methods: {'GET'}
+Name: admin.students                 Path: /admin/students                                    Methods: {'GET'}
+Name: admin.add_student              Path: /admin/students/add                                Methods: {'POST'}
+Name: admin.delete_student           Path: /admin/students/delete/{id}                        Methods: {'POST'}
+Name: admin.edit_student             Path: /admin/students/edit/{id}                          Methods: {'POST'}
+Name: admin.bulk_update_students     Path: /admin/students/bulk-update                        Methods: {'POST'}
+Name: admin.bulk_delete_students     Path: /admin/students/bulk-delete                        Methods: {'POST'}
+Name: admin.faculty                  Path: /admin/faculty                                     Methods: {'GET'}
+Name: admin.departments              Path: /admin/departments                                 Methods: {'GET'}
+Name: admin.department_details       Path: /admin/departments/details/{department_name}       Methods: {'GET'}
+Name: admin.add_department           Path: /admin/departments/add                             Methods: {'POST'}
+Name: admin.edit_department          Path: /admin/departments/edit/{id}                       Methods: {'POST'}
+Name: admin.delete_department        Path: /admin/departments/delete/{id}                     Methods: {'POST'}
+Name: admin.export_departments       Path: /admin/departments/export                          Methods: {'GET'}
+Name: admin.subjects                 Path: /admin/subjects                                    Methods: {'GET'}
+Name: admin.add_subject              Path: /admin/subjects/add                                Methods: {'POST'}
+Name: admin.delete_subject           Path: /admin/subjects/delete/{id}                        Methods: {'POST'}
+Name: admin.edit_subject             Path: /admin/subjects/edit/{id}                          Methods: {'POST'}
+Name: admin.export_subjects          Path: /admin/subjects/export                             Methods: {'GET'}
+Name: admin.import_subjects          Path: /admin/subjects/import                             Methods: {'POST'}
+Name: admin.subject_allocation       Path: /admin/subject-allocation                          Methods: {'GET'}
+Name: admin.add_subject_allocation   Path: /admin/subject-allocation/add                      Methods: {'POST'}
+Name: admin.edit_subject_allocation  Path: /admin/subject-allocation/edit/{id}                Methods: {'POST'}
+Name: admin.delete_subject_allocation Path: /admin/subject-allocation/delete/{id}              Methods: {'POST'}
+Name: admin.sync_mentors             Path: /admin/subject-allocation/sync-mentors             Methods: {'POST'}
+Name: admin.external_marks           Path: /admin/external-marks                              Methods: {'GET'}
+Name: toggle_external_marks          Path: /admin/settings/toggle_external_marks              Methods: {'POST'}
+Name: get_students_for_marks         Path: /admin/external_marks/get_students                 Methods: {'POST'}
+Name: save_external_marks            Path: /admin/external_marks/save                         Methods: {'POST'}
+Name: admin.delete_external_mark     Path: /admin/external_marks/delete/{id}                  Methods: {'POST'}
+Name: admin.import_students          Path: /admin/students/import                             Methods: {'POST'}
+Name: admin.export_students          Path: /admin/students/export                             Methods: {'GET'}
+Name: admin.add_faculty              Path: /admin/faculty/add                                 Methods: {'POST'}
+Name: admin.delete_faculty           Path: /admin/faculty/delete/{id}                         Methods: {'POST'}
+Name: admin.update_faculty_profile   Path: /admin/faculty/edit/{id}                           Methods: {'POST'}
+Name: admin.bulk_delete_faculty      Path: /admin/faculty/bulk-delete                         Methods: {'POST'}
+Name: admin.import_faculty           Path: /admin/faculty/import                              Methods: {'POST'}
+Name: admin.fees                     Path: /admin/fees                                        Methods: {'GET'}
+Name: admin.add_fee                  Path: /admin/fees/add                                    Methods: {'POST'}
+Name: admin.edit_fee                 Path: /admin/fees/edit/{id}                              Methods: {'POST'}
+Name: admin.delete_fee               Path: /admin/fees/delete/{id}                            Methods: {'POST'}
+Name: admin.announcements            Path: /admin/announcements                               Methods: {'GET'}
+Name: admin.add_announcement         Path: /admin/announcements/add                           Methods: {'POST'}
+Name: admin.edit_announcement        Path: /admin/announcements/edit/{id}                     Methods: {'POST'}
+Name: admin.delete_announcement      Path: /admin/announcements/delete/{id}                   Methods: {'POST'}
+Name: admin.toggle_announcement_status Path: /admin/announcements/toggle-status/{id}            Methods: {'POST'}
+Name: admin.analytics                Path: /admin/analytics                                   Methods: {'GET'}
+Name: admin.timetable                Path: /admin/timetable                                   Methods: {'GET'}
+Name: admin.add_timetable            Path: /admin/timetable/add                               Methods: {'POST'}
+Name: admin.edit_timetable           Path: /admin/timetable/edit/{id}                         Methods: {'POST'}
+Name: admin.delete_timetable         Path: /admin/timetable/delete/{id}                       Methods: {'POST'}
+Name: admin.export_timetable         Path: /admin/timetable/export                            Methods: {'GET'}
+Name: admin.import_timetable         Path: /admin/timetable/import                            Methods: {'POST'}
+Name: check_availability             Path: /admin/api/check_availability                      Methods: {'GET'}
+Name: get_timetable_entries          Path: /admin/api/get_timetable_entries                   Methods: {'GET'}
+Name: get_subjects_api               Path: /admin/api/subjects/{branch}/{year}/{semester}     Methods: {'GET'}
+Name: get_students_api               Path: /admin/api/students/{branch}/{year}/{semester}/{section} Methods: {'GET'}
+Name: edit_external_mark             Path: /admin/external-marks/edit/{id}                    Methods: {'POST'}
+Name: view_student_profile           Path: /admin/view-student-profile.html                   Methods: {'GET'}
+Name: admin.view_faculty_profile     Path: /admin/view-faculty-profile.html                   Methods: {'GET'}
+Name: admin.update_student_profile   Path: /admin/update-student-profile/{id}                 Methods: {'POST'}
+Name: admin.update_faculty_profile   Path: /admin/update-faculty-profile/{id}                 Methods: {'POST'}
+Name: admin.export_faculty           Path: /admin/export/faculty                              Methods: {'GET'}
+Name: admin.reset_database           Path: /admin/reset_database                              Methods: {'POST'}
+Name: faculty.dashboard              Path: /faculty/dashboard                                 Methods: {'GET'}
+Name: faculty.attendance             Path: /faculty/attendance                                Methods: {'GET'}
+Name: student.dashboard              Path: /student/dashboard                                 Methods: {'GET'}
+Name: static                         Path: /static                                            Methods: N/A
+Name: root                           Path: /                                                  Methods: {'GET'}
+Name: login_page                     Path: /login                                             Methods: {'GET'}
+Name: logout_page                    Path: /logout                                            Methods: {'GET'}
+------------------------------------------------------------

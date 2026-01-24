@@ -1,0 +1,678 @@
+{% extends "base.html" %}
+
+{% block title %}Admin External Marks - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'external_marks' %}
+  {% include 'includes/admin_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">External Marks</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span class="notification-dot"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div id="externalMarksAlert" class="alert" style="display: block;">
+        {% for category, message in messages %}
+        <div class="alert-{{ category }}">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="page-header">
+
+        <h1>External Marks Management</h1>
+        <p class="page-subtitle">Manage external examination marks for students</p>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <button class="btn btn-primary" onclick="showAddExternalMarksModal()">
+            <span class="action-icon">➕</span> Add Marks
+          </button>
+        </div>
+        <div class="right-actions">
+          <div class="toggle-container-simple">
+            <span id="toggleLabel" class="toggle-label-text">
+              Display to Students: <strong>{% if show_external_marks %}ON{% else %}OFF{% endif %}</strong>
+            </span>
+            <label class="switch-modern">
+              <input type="checkbox" id="externalMarksToggle" {% if show_external_marks %}checked{% endif %}
+                onchange="toggleExternalMarksVisibility()">
+              <span class="slider-modern round"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <div class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Search</label>
+            <input type="text" id="view_search" class="form-input" placeholder="ID or name..."
+              value="{{ search or '' }}">
+          </div>
+          <div class="filter-group">
+            <label>Branch</label>
+            <select id="view_branch" class="form-select" onchange="applyFilters()">
+              <option value="">All Branches</option>
+              {% for branch in branches %}
+              <option value="{{ branch }}" {% if branch==branch and branch %}selected{% endif %}>{{ branch }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Year</label>
+            <select id="view_year" class="form-select" onchange="updateViewSemesters()">
+              <option value="">All Years</option>
+              {% for y in range(1, 5) %}
+              <option value="{{ y }}" {% if year==y %}selected{% endif %}>Year {{ y }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Semester</label>
+            <select id="view_semester" class="form-select" disabled onchange="applyFilters()">
+              <option value="">Select Year First</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Section</label>
+            <select id="view_section" class="form-select" onchange="applyFilters()">
+              <option value="">All Sections</option>
+              {% for sec in ['A', 'B', 'C'] %}
+              <option value="{{ sec }}" {% if section==sec %}selected{% endif %}>Section {{ sec }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label>Subject</label>
+            <select id="view_subject" class="form-select" onchange="applyFilters()">
+              <option value="">All Subjects</option>
+              {% for sub in subjects %}
+              <option value="{{ sub.id }}" {% if subject|int==sub.id|int %}selected{% endif %}>{{ sub.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-actions-simple">
+            <button class="btn btn-primary" onclick="applyFilters()">Apply</button>
+            {% if search or branch or year or semester or section or subject %}
+            <a href="{{ url_for('admin.external_marks') }}" class="btn btn-outline-secondary"
+              style="text-decoration:none;">Clear</a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-card full-width" style="margin-top: 2rem;">
+        <h3>External Marks Records <span class="badge badge-info">{{ marks|length }} records</span></h3>
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Student Name</th>
+                <th>Subject</th>
+                <th>Marks</th>
+                <th>Max Marks</th>
+                <th>Percentage</th>
+                <th>Date</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for mark in marks %}
+              <tr>
+                <td>{{ mark.student_id }}</td>
+                <td>{{ mark.student_name }}</td>
+                <td>{{ mark.subject_name }}</td>
+                <td>{{ mark.marks }}</td>
+                <td>{{ mark.max_marks }}</td>
+                <td>{{ "%.2f"|format(mark.percentage) }}%</td>
+                <td>{{ mark.date }}</td>
+                <td>
+                  <div class="action-buttons">
+                    <button class="btn-icon" title="Edit" data-mark='{{ mark|tojson }}'
+                      onclick='editMark(this.dataset.mark)'>✏️</button>
+                    <form action="{{ url_for('admin.delete_external_mark', id=mark.id) }}" method="POST"
+                      style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this mark?');">
+                      <button type="submit" class="btn-icon delete-btn" title="Delete">🗑️</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        {% if total_pages > 1 %}
+        <div class="pagination-container"
+          style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; padding: 1rem; border-top: 1px solid var(--border-color);">
+          <div class="pagination-info" style="color: #666; font-size: 0.9rem;">
+            Showing {{ start_idx + 1 }} to {{ end_idx }} of {{ total_items }} entries
+          </div>
+          <div class="pagination-controls" style="display: flex; gap: 0.5rem;">
+            {% if pagination.has_prev %}
+            <a href="javascript:void(0)" onclick="changePage('{{ pagination.prev_num }}')"
+              class="btn btn-secondary btn-sm">Previous</a>
+            {% endif %}
+
+            <div class="page-numbers" style="display: flex; gap: 0.25rem; align-items: center;">
+              {% for p in pagination.iter_pages() %}
+              {% if p == pagination.page %}
+              <span class="btn btn-primary btn-sm" style="background: var(--accent-primary); pointer-events: none;">{{
+                p }}</span>
+              {% else %}
+              <a href="javascript:void(0)" onclick="changePage('{{ p }}')" class="btn btn-outline btn-sm"
+                style="min-width: 32px; text-align: center;">{{ p }}</a>
+              {% endif %}
+              {% endfor %}
+            </div>
+
+            {% if pagination.has_next %}
+            <a href="javascript:void(0)" onclick="changePage('{{ pagination.next_num }}')"
+              class="btn btn-secondary btn-sm">Next</a>
+            {% endif %}
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<!-- Add External Marks Modal -->
+<div id="externalMarksModal" class="modal">
+  <div class="modal-content" style="max-width: 800px;">
+    <span class="close-button" onclick="hideExternalMarksModal()">×</span>
+    <h2>Add External Marks</h2>
+    <form action="{{ url_for('admin.external_marks') }}" method="POST" id="addMarksForm">
+      <div class="form-row" style="display: flex; gap: 1rem;">
+        <div class="form-group" style="flex: 1;">
+          <label for="marksBranch">Branch</label>
+          <select id="marksBranch" name="branch" class="form-select" required onchange="fetchSubjects()">
+            <option value="">Select Branch</option>
+            {% for branch in branches %}
+            <option value="{{ branch }}">{{ branch }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label for="marksYear">Year</label>
+          <select id="marksYear" name="year" class="form-select" required onchange="fetchSubjects()">
+            <option value="">Select Year</option>
+            <option value="1">Year 1</option>
+            <option value="2">Year 2</option>
+            <option value="3">Year 3</option>
+            <option value="4">Year 4</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="display: flex; gap: 1rem;">
+        <div class="form-group" style="flex: 1;">
+          <label for="marksSemester">Semester</label>
+          <select id="marksSemester" name="semester" class="form-select" required onchange="fetchSubjects()">
+            <option value="">Select Semester</option>
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+            <option value="3">Semester 3</option>
+            <option value="4">Semester 4</option>
+            <option value="5">Semester 5</option>
+            <option value="6">Semester 6</option>
+            <option value="7">Semester 7</option>
+            <option value="8">Semester 8</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label for="marksSection">Section</label>
+          <select id="marksSection" name="section" class="form-select" required onchange="fetchStudents()">
+            <option value="">Select Section</option>
+            <option value="A">Section A</option>
+            <option value="B">Section B</option>
+            <option value="C">Section C</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="marksSubject">Subject</label>
+        <select id="marksSubject" name="subject_id" class="form-select" required onchange="fetchStudents()">
+          <option value="">Select Subject</option>
+          <!-- Populated by JS -->
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="marksMaxMarks">Max Marks</label>
+        <input type="number" id="marksMaxMarks" name="max_marks" class="form-input" min="1" max="100" value="70"
+          required>
+      </div>
+
+      <div id="studentsMarksList" style="display: none; margin-top: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h4>Enter Marks for Students</h4>
+          <div class="bulk-actions" style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="number" id="bulkMarksInput" class="form-input" style="width: 80px;" placeholder="Marks">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="applyBulkMarks()">Apply to All</button>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="setAllAbsent()">Mark All Absent</button>
+          </div>
+        </div>
+        <div class="table-container"
+          style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 0.5rem;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Marks</th>
+                <th>%</th>
+                <th>Absent</th>
+              </tr>
+            </thead>
+            <tbody id="studentsMarksBody">
+              <!-- Populated by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideExternalMarksModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Marks</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Edit Mark Modal -->
+<div id="editMarkModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="hideEditMarkModal()">×</span>
+    <h2>Edit External Mark</h2>
+    <form id="editMarkForm" method="POST">
+      <div class="form-group">
+        <label>Student ID</label>
+        <input type="text" id="edit_student_id" class="form-input" readonly>
+      </div>
+      <div class="form-group">
+        <label>Subject</label>
+        <input type="text" id="edit_subject_name" class="form-input" readonly>
+      </div>
+      <div class="form-group">
+        <label for="edit_marks">Marks</label>
+        <input type="number" id="edit_marks" name="marks" class="form-input" step="0.01" required>
+      </div>
+      <div class="form-group">
+        <label for="edit_max_marks">Max Marks</label>
+        <input type="number" id="edit_max_marks" name="max_marks" class="form-input" step="0.01" required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideEditMarkModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Mark</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  function showAddExternalMarksModal() {
+    document.getElementById('externalMarksModal').style.display = 'block';
+  }
+
+  function hideExternalMarksModal() {
+    document.getElementById('externalMarksModal').style.display = 'none';
+  }
+
+  function showEditMarkModal() {
+    document.getElementById('editMarkModal').style.display = 'block';
+  }
+
+  function hideEditMarkModal() {
+    document.getElementById('editMarkModal').style.display = 'none';
+  }
+
+  function editMark(markJson) {
+    const mark = JSON.parse(markJson);
+    showEditMarkModal();
+    document.getElementById('editMarkForm').action = `/admin/external-marks/edit/${mark.id}`;
+    document.getElementById('edit_student_id').value = mark.student_id;
+    document.getElementById('edit_subject_name').value = mark.subject_name;
+    document.getElementById('edit_marks').value = mark.marks;
+    document.getElementById('edit_max_marks').value = mark.max_marks;
+  }
+
+  // Close modal when clicking outside
+  window.onclick = function (event) {
+    if (event.target == document.getElementById('externalMarksModal')) {
+      hideExternalMarksModal();
+    }
+    if (event.target == document.getElementById('editMarkModal')) {
+      hideEditMarkModal();
+    }
+  }
+
+  async function fetchSubjects() {
+    const branch = document.getElementById('marksBranch').value;
+    const year = document.getElementById('marksYear').value;
+    const semester = document.getElementById('marksSemester').value;
+
+    if (branch && year && semester) {
+      const response = await fetch(`/admin/api/subjects/${encodeURIComponent(branch)}/${year}/${semester}`);
+      const data = await response.json();
+      const subjectSelect = document.getElementById('marksSubject');
+      subjectSelect.innerHTML = '<option value="">Select Subject</option>';
+      data.subjects.forEach(subject => {
+        subjectSelect.innerHTML += `<option value="${subject.id}">${subject.name} (${subject.code})</option>`;
+      });
+
+      // Clear students list when subject options change (wait for subject selection)
+      document.getElementById('studentsMarksBody').innerHTML = '';
+      document.getElementById('studentsMarksList').style.display = 'none';
+    }
+  }
+
+  async function fetchStudents() {
+    const branch = document.getElementById('marksBranch').value;
+    const year = document.getElementById('marksYear').value;
+    const semester = document.getElementById('marksSemester').value;
+    const section = document.getElementById('marksSection').value;
+    const subjectId = document.getElementById('marksSubject').value;
+
+    const tbody = document.getElementById('studentsMarksBody');
+    tbody.innerHTML = '';
+    document.getElementById('studentsMarksList').style.display = 'none';
+
+    if (branch && year && semester && section && subjectId) {
+      try {
+        // branch is already used in body, which is fine for JSON.stringify, 
+        // but if we ever use it in URL params in other spots, keep encoding in mind.
+        const response = await fetch('/admin/external_marks/get_students', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            branch: branch,
+            year: year,
+            semester: semester,
+            section: section,
+            subject_id: subjectId
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.students && data.students.length > 0) {
+          document.getElementById('studentsMarksList').style.display = 'block';
+          data.students.forEach(student => {
+            const hasMarks = student.marks !== null && student.marks !== undefined;
+            const marksValue = hasMarks ? student.marks : '';
+            const readOnlyAttr = hasMarks ? 'readonly' : '';
+            const styleAttr = hasMarks ? 'background-color: #e9ecef; cursor: not-allowed; width: 100px;' : 'width: 100px;';
+
+            tbody.innerHTML += `
+                <tr>
+                  <td>${student.student_id}</td>
+                  <td>${student.name}</td>
+                  <td>
+                    <input type="number" name="mark_${student.id}" class="form-input marks-input" 
+                      min="0" max="${document.getElementById('marksMaxMarks').value}" step="0.5" placeholder="${hasMarks ? 'Recorded' : 'Marks'}" 
+                      data-student-id="${student.id}" 
+                      value="${marksValue}" 
+                      ${readOnlyAttr} 
+                      oninput="calculateLivePercentage(this)"
+                      style="${styleAttr}">
+                      ${hasMarks ? '<small class="text-muted" style="display:block; font-size: 0.75rem;">Already Entered</small>' : ''}
+                  </td>
+                  <td id="percent_${student.id}" style="font-size: 0.85rem; color: #666;">
+                    ${hasMarks ? Math.round(student.marks / student.max_marks * 100) + '%' : '-'}
+                  </td>
+                  <td>
+                    <input type="checkbox" class="absent-checkbox" 
+                      data-student-id="${student.id}" 
+                      ${readOnlyAttr}
+                      ${student.is_absent ? 'checked' : ''}
+                      onchange="handleAbsentToggle(this)">
+                  </td>
+                </tr>
+              `;
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching students:', error);
+      }
+    }
+  }
+
+  function applyBulkMarks() {
+    const bulkValue = document.getElementById('bulkMarksInput').value;
+    if (bulkValue === '') return;
+
+    const inputs = document.querySelectorAll('.marks-input');
+    inputs.forEach(input => {
+      if (!input.hasAttribute('readonly')) {
+        input.value = bulkValue;
+        // Uncheck absent if setting marks
+        const row = input.closest('tr');
+        const absentCheck = row.querySelector('.absent-checkbox');
+        if (absentCheck) absentCheck.checked = false;
+        calculateLivePercentage(input);
+      }
+    });
+  }
+
+  function setAllAbsent() {
+    const inputs = document.querySelectorAll('.marks-input');
+    const checks = document.querySelectorAll('.absent-checkbox');
+    checks.forEach((check, index) => {
+      if (!check.hasAttribute('readonly')) {
+        check.checked = true;
+        const input = inputs[index];
+        if (input) {
+          input.value = 0;
+          calculateLivePercentage(input);
+        }
+      }
+    });
+  }
+
+  function handleAbsentToggle(check) {
+    const row = check.closest('tr');
+    const input = row.querySelector('.marks-input');
+    if (check.checked && input && !input.hasAttribute('readonly')) {
+      input.value = 0;
+    }
+    calculateLivePercentage(input);
+  }
+
+  function calculateLivePercentage(input) {
+    if (!input) return;
+    const studentId = input.dataset.studentId;
+    const maxMarks = parseFloat(document.getElementById('marksMaxMarks').value) || 70;
+    const val = parseFloat(input.value) || 0;
+    const percentEl = document.getElementById(`percent_${studentId}`);
+
+    const row = input.closest('tr');
+    const isAbsent = row.querySelector('.absent-checkbox').checked;
+
+    if (percentEl) {
+      if (isAbsent) {
+        percentEl.textContent = '0% (Ab)';
+        percentEl.style.color = '#dc3545';
+      } else if (input.value === '') {
+        percentEl.textContent = '-';
+        percentEl.style.color = '#666';
+      } else {
+        const p = Math.round((val / maxMarks) * 100);
+        percentEl.textContent = p + '%';
+        percentEl.style.color = p < 35 ? '#dc3545' : '#198754';
+      }
+    }
+  }
+
+  // Handle Form Submission via AJAX
+  document.getElementById('addMarksForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const subjectId = document.getElementById('marksSubject').value;
+    const maxMarks = document.getElementById('marksMaxMarks').value;
+    const marksEntries = [];
+
+    const inputs = document.querySelectorAll('.marks-input');
+    inputs.forEach(input => {
+      const row = input.closest('tr');
+      const isAbsent = row.querySelector('.absent-checkbox').checked;
+
+      if (input.value !== '' || isAbsent) {
+        marksEntries.push({
+          student_id: input.dataset.studentId,
+          marks: parseFloat(input.value) || 0,
+          is_absent: isAbsent
+        });
+      }
+    });
+
+    if (marksEntries.length === 0) {
+      alert('Please enter marks for at least one student.');
+      return;
+    }
+
+    try {
+      const response = await fetch('/admin/external_marks/save', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          subject_id: subjectId,
+          max_marks: maxMarks,
+          marks_entries: marksEntries
+        })
+      });
+
+      const result = await response.json();
+      if (result.success) {
+        alert(result.message);
+        window.location.reload();
+      } else {
+        alert('Error: ' + (result.error || result.message));
+      }
+    } catch (error) {
+      console.error('Error saving marks:', error);
+      alert('An error occurred while saving marks.');
+    }
+  });
+
+  // Filter Logic
+  function updateViewSemesters() {
+    const year = parseInt(document.getElementById('view_year').value);
+    const semesterSelect = document.getElementById('view_semester');
+    semesterSelect.innerHTML = '<option value="">Select Semester</option>';
+    semesterSelect.disabled = true;
+
+    if (year) {
+      semesterSelect.disabled = false;
+      let maxSemester = 0;
+      if (year === 1) maxSemester = 2;
+      else if (year === 2) maxSemester = 4;
+      else if (year === 3) maxSemester = 6;
+      else if (year === 4) maxSemester = 8;
+
+      for (let i = 1; i <= maxSemester; i++) {
+        const option = document.createElement('option');
+        option.value = i;
+        option.text = `Semester ${i}`;
+        semesterSelect.add(option);
+      }
+    }
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('view_search').value;
+    const branch = document.getElementById('view_branch').value;
+    const year = document.getElementById('view_year').value;
+    const semester = document.getElementById('view_semester').value;
+    const section = document.getElementById('view_section').value;
+    const subject = document.getElementById('view_subject').value;
+
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (branch) params.append('branch', branch);
+    if (year) params.append('year', year);
+    if (semester) params.append('semester', semester);
+    if (section) params.append('section', section);
+    if (subject) params.append('subject', subject);
+
+    window.location.href = `{{ url_for('admin.external_marks') }}?${params.toString()}`;
+  }
+
+  function changePage(p) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('page', p);
+    window.location.href = `{{ url_for('admin.external_marks') }}?${urlParams.toString()}`;
+  }
+
+  // Initialize semester dropdown on load if year is selected
+  document.addEventListener('DOMContentLoaded', function () {
+    const urlParams = new URLSearchParams(window.location.search);
+    const year = urlParams.get('year');
+    const semester = urlParams.get('semester');
+
+    if (year) {
+      document.getElementById('view_year').value = year;
+      updateViewSemesters();
+      if (semester) {
+        document.getElementById('view_semester').value = semester;
+      }
+    }
+  });
+
+  // Toggle Visibility
+  async function toggleExternalMarksVisibility() {
+    try {
+      const response = await fetch('/admin/settings/toggle_external_marks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      const data = await response.json();
+      if (data.success) {
+        const label = document.getElementById('toggleLabel');
+        const isVisible = data.new_value;
+        label.textContent = isVisible ? 'Global: Visible to Students' : 'Global: Hidden from Students';
+        // Show notification
+        alert(`Success: External marks are now ${isVisible ? 'VISIBLE' : 'HIDDEN'} for students.`);
+      } else {
+        alert('Error: ' + data.error);
+        // Revert toggle
+        document.getElementById('externalMarksToggle').checked = !document.getElementById('externalMarksToggle').checked;
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to toggle settings');
+      document.getElementById('externalMarksToggle').checked = !document.getElementById('externalMarksToggle').checked;
+    }
+  }
+</script>
+
+
+</div>
+{% endblock %}

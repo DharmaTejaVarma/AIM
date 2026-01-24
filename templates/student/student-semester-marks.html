@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+
+{% block title %}Semester Marks - CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  {% set active_page = 'semester_marks' %}
+  {% include 'includes/student_sidebar.html' %}
+
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Semester Marks</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn">🔔</button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div id="semesterMarksAlert"></div>
+
+      <div class="page-header">
+        <h1 id="semesterHeader">Semester Marks</h1>
+        <p class="page-subtitle">Detailed marks for subjects in this semester</p>
+      </div>
+
+      <div class="action-bar modern">
+        <div class="left-actions">
+          <a href="{{ url_for('student.marks') }}" class="btn btn-outline-secondary">
+            <span class="action-icon">←</span> Back to My Marks
+          </a>
+        </div>
+      </div>
+
+      <div class="filters-card">
+        <div class="filter-grid-auto">
+          <div class="filter-group">
+            <label>Subject Type</label>
+            <div class="filter-actions-simple">
+              <button id="filterAllSubjectsBtn" class="btn btn-primary"
+                onclick="studentSemesterMarks.filterSubjectsView('all')">All</button>
+              <button id="filterTheorySubjectsBtn" class="btn btn-outline-secondary"
+                onclick="studentSemesterMarks.filterSubjectsView('theory')">Theory</button>
+              <button id="filterLabSubjectsBtn" class="btn btn-outline-secondary"
+                onclick="studentSemesterMarks.filterSubjectsView('lab')">Lab</button>
+              <button id="filterSkillSubjectsBtn" class="btn btn-outline-secondary"
+                onclick="studentSemesterMarks.filterSubjectsView('skill_course')">Skill</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-card full-width" style="margin-top: 32px;">
+        <h3>Subjects in this Semester <span class="badge badge-info" id="totalSubjectsCount">-- subjects</span></h3>
+        <div id="detailedMarksCards" class="marks-cards-grid">
+          <!-- Detailed marks cards populated by JS -->
+        </div>
+      </div>
+
+    </section>
+  </main>
+</div>
+
+<style>
+  .marks-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 32px;
+    margin-top: 20px;
+  }
+
+  .mark-card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: var(--shadow);
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .mark-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .mark-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--border-color);
+  }
+
+  .mark-card-header h3 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .mark-card-body {
+    flex: 1;
+    font-size: 15px;
+    color: var(--text-secondary);
+    line-height: 1.8;
+  }
+
+  .mark-card-body strong {
+    color: var(--text-primary);
+  }
+
+  .mark-card-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 20px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border-color);
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+</style>
+
+<!-- Core Scripts -->
+<script src="/static/js/database.js"></script>
+<script src="/static/js/auth.js"></script>
+
+<script>
+  const FETCH_MARKS_URL = "{{ url_for('student.fetch_marks_data') }}";
+
+  const studentSemesterMarks = {
+    allSubjects: [],
+    currentFilter: 'all',
+
+    init() {
+      // Parse semester from URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const semester = urlParams.get('semester');
+
+      if (!semester) {
+        document.getElementById('semesterMarksAlert').innerHTML =
+          '<div class="alert alert-danger">No semester specified. <a href="{{ url_for("student.marks") }}">Go back</a></div>';
+        return;
+      }
+
+      document.getElementById('semesterHeader').textContent = `Semester ${semester} Marks`;
+      document.title = `Semester ${semester} Marks - CampusIQ`;
+
+      this.loadData(semester);
+    },
+
+    async loadData(semester) {
+      try {
+        // Reusing the general marks fetch which returns ALL semester data
+        const response = await fetch(FETCH_MARKS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) throw new Error('Failed to fetch marks');
+
+        const data = await response.json();
+        const semesterData = data.semester_data[semester];
+
+        if (!semesterData) {
+          throw new Error(`No data found for Semester ${semester}`);
+        }
+
+        this.allSubjects = semesterData.subjects || [];
+        this.renderCards(this.allSubjects);
+
+      } catch (error) {
+        console.error(error);
+        document.getElementById('semesterMarksAlert').innerHTML =
+          `<div class="alert alert-danger">${error.message}</div>`;
+      }
+    },
+
+    filterSubjectsView(type) {
+      this.currentFilter = type;
+
+      // update buttons
+      document.querySelectorAll('.filter-group .btn').forEach(btn => {
+        btn.classList.remove('btn-primary', 'btn-secondary');
+        btn.classList.add('btn-secondary');
+      });
+
+      let activeBtnId = 'filterAllSubjectsBtn';
+      if (type === 'theory') activeBtnId = 'filterTheorySubjectsBtn';
+      if (type === 'lab') activeBtnId = 'filterLabSubjectsBtn';
+      if (type === 'skill_course') activeBtnId = 'filterSkillSubjectsBtn';
+
+      const activeBtn = document.getElementById(activeBtnId);
+      if (activeBtn) {
+        activeBtn.classList.remove('btn-secondary');
+        activeBtn.classList.add('btn-primary');
+      }
+
+      let filtered = this.allSubjects;
+      if (type !== 'all') {
+        filtered = this.allSubjects.filter(sub => {
+          return sub.type && sub.type.toLowerCase() === type.toLowerCase();
+        });
+      }
+
+      this.renderCards(filtered);
+    },
+
+    renderCards(inputSubjects) {
+      // Filter out subjects with no marks entered
+      const subjects = inputSubjects.filter(sub => sub.has_marks);
+
+      const container = document.getElementById('detailedMarksCards');
+      document.getElementById('totalSubjectsCount').textContent = `${subjects.length} subjects`;
+
+      if (subjects.length === 0) {
+        container.innerHTML = '<div class="text-center p-4" style="grid-column: 1/-1">No subjects found with entered marks.</div>';
+        return;
+      }
+
+      container.innerHTML = subjects.map(sub => {
+        const isPass = sub.status === 'Pass';
+        const statusColor = isPass ? 'var(--success-color)' : 'var(--error-color)';
+
+        // Safety check for internal object
+        const internalTotal = sub.internal && sub.internal.totalInternal != null ? sub.internal.totalInternal : '-';
+        const internalMax = sub.internal && sub.internal.maxInternal != null ? sub.internal.maxInternal : 30;
+
+        return `
+                    <div class="mark-card" style="border-top: 4px solid ${statusColor}; cursor: pointer;" 
+                         onclick="window.location.href='/student/marks/subject/${sub.id}'">
+                        <div class="mark-card-header">
+                            <h3>${sub.name}</h3>
+                            <span class="badge" style="background:${statusColor}; color:white">${sub.status}</span>
+                        </div>
+                        <div class="mark-card-body">
+                            <div><strong>Code:</strong> ${sub.code}</div>
+                            <div><strong>Credits:</strong> ${sub.credits}</div>
+                            <div><strong>Internal Marks:</strong> ${internalTotal} / ${internalMax}</div>
+                            <div><strong>External Marks:</strong> ${sub.external || '-'} / 70</div>
+                            <div><strong>Total:</strong> ${sub.total || '-'} / 100</div>
+                        </div>
+                        <div class="mark-card-footer">
+                            <span>Grade: ${sub.grade || '-'}</span>
+                            <span style="color: var(--primary-color); text-decoration: underline;">View Details →</span>
+                        </div>
+                    </div>
+                `;
+      }).join('');
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof studentSemesterMarks !== 'undefined') {
+      studentSemesterMarks.init();
+    }
+  });
+</script>
+
+
+
+</div>
+{% endblock %}

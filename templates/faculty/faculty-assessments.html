@@ -1,0 +1,492 @@
+{% extends "base.html" %}
+
+{% block title %}Assessments | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+  <!-- Sidebar -->
+  {% set active_page = 'assessments' %}
+  {% include 'includes/faculty_sidebar.html' %}
+
+  <!-- Main Content -->
+  <main class="main">
+    <header class="topbar">
+      <div class="header-title">
+        <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Assessments</h2>
+      </div>
+      <div class="user-area">
+        <button class="notification-btn" aria-label="Notifications">🔔
+          {% if new_updates_count > 0 %}
+          <span
+            style="background: red; border-radius: 50%; width: 8px; height: 8px; position: absolute; top: 10px; right: 10px;"></span>
+          {% endif %}
+        </button>
+        <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+      </div>
+    </header>
+
+    <section class="content-area">
+      <div class="page-header">
+        <h1>Assessments</h1>
+        <div class="action-bar">
+          <div class="filter-group">
+            <label for="subjectFilter">Subject</label>
+            <select id="subjectFilter" class="form-select" onchange="loadAssessments()">
+              <option value="">All Subjects</option>
+              {% for offering in class_offerings %}
+              <option value="{{ offering.subject.id }}">
+                {{ offering.subject.name }} ({{ offering.subject.code }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="filter-group">
+            <label for="typeFilter">Type</label>
+            <select id="typeFilter" class="form-select" onchange="loadAssessments()">
+              <option value="">All Types</option>
+              <option value="typed_questions">Typed Questions</option>
+              <option value="assignment_question_paper">File Upload</option>
+              <option value="lab_exam">Lab Exam</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="openAssessmentModal()">
+            <span class="action-icon">➕</span> Create Assessment
+          </button>
+        </div>
+      </div>
+
+      <!-- Assessments List -->
+      <div class="card full-width">
+        <div class="table-container">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Subject</th>
+                <th>Type</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="assessmentsTableBody">
+              <tr>
+                <td colspan="6" class="text-center">Loading...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- Notification Modal -->
+  <div id="notificationModal" class="modal">
+    <div class="modal-content">
+      <span class="close-button" onclick="toggleNotificationModal()">×</span>
+      <h2>Notifications History</h2>
+      <div class="notification-list" style="max-height: 400px; overflow-y: auto; margin-top: 1rem;">
+        {% if announcements %}
+        {% for ann in announcements %}
+        <div class="announcement-item" style="padding: 15px 0; border-bottom: 1px solid var(--border-color);">
+          <div style="font-weight: 600; font-size: 1rem; margin-bottom: 4px; color: var(--text-primary);">{{
+            ann.title }}</div>
+          <p class="text-muted" style="margin: 0 0 4px; font-size: 0.9rem;">{{ ann.content }}</p>
+          <div class="text-muted small" style="font-size: 0.8rem;">{{ ann.date }} • <span class="badge badge-info">{{
+              ann.priority|capitalize }}</span></div>
+        </div>
+        {% endfor %}
+        {% else %}
+        <p class="text-muted text-center">No notifications found.</p>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function toggleNotificationModal() {
+      const modal = document.getElementById('notificationModal');
+      if (modal.style.display === 'block') {
+        modal.style.display = 'none';
+      } else {
+        modal.style.display = 'block';
+      }
+    }
+
+    // Bind bell click
+    const notificationBtn = document.querySelector('.notification-btn');
+    if (notificationBtn) {
+      notificationBtn.onclick = toggleNotificationModal;
+    }
+
+    // Close on outside click
+    window.onclick = function (event) {
+      const modal = document.getElementById('notificationModal');
+      if (event.target == modal) {
+        modal.style.display = "none";
+      }
+      // Also handle assessment modal outside click if needed or keep existing
+      const assModal = document.getElementById('assessmentModal');
+      if (assModal && event.target == assModal) {
+        assModal.style.display = "none";
+      }
+      const viewModal = document.getElementById('viewModal');
+      if (viewModal && event.target == viewModal) {
+        viewModal.style.display = "none";
+      }
+    }
+  </script>
+</div>
+
+<!-- Create/Edit Assessment Modal -->
+<div id="assessmentModal" class="modal">
+  <div class="modal-content" style="max-width: 700px;">
+    <span class="close-button" onclick="hideAssessmentModal()">×</span>
+    <h2 id="modalTitle">Create Assessment</h2>
+    <form id="assessmentForm">
+      <input type="hidden" id="assessmentId">
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label for="assTitle">Title</label>
+          <input type="text" id="assTitle" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label for="assSubject">Subject</label>
+          <select id="assSubject" class="form-select" required>
+            <option value="">Select Subject</option>
+            {% for offering in class_offerings %}
+            <option value="{{ offering.subject.id }}">
+              {{ offering.subject.name }} ({{ offering.subject.code }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label for="assType">Type</label>
+          <select id="assType" class="form-select" onchange="handleTypeChange()" required>
+            <option value="">Select Type</option>
+            <option value="typed_questions">Typed Questions</option>
+            <option value="assignment_question_paper">File Upload</option>
+            <option value="lab_exam">Lab Exam</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="assMaxMarks">Max Marks</label>
+          <input type="number" id="assMaxMarks" class="form-input" required min="1">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="assDesc">Description</label>
+        <textarea id="assDesc" class="form-input" rows="2"></textarea>
+      </div>
+
+      <!-- Dynamic Section: File Upload -->
+      <div id="fileUploadSection" class="form-group"
+        style="display:none; background: var(--bg-tertiary); padding: 1rem; border-radius: var(--radius-md);">
+        <label for="assFile">Question Paper (PDF/Doc)</label>
+        <input type="file" id="assFile" class="form-input">
+        <small class="text-muted" id="currentFileText"></small>
+      </div>
+
+      <!-- Dynamic Section: Typed Questions -->
+      <div id="questionsSection"
+        style="display:none; background: var(--bg-tertiary); padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1rem;">
+        <label>Questions</label>
+        <div id="questionsContainer">
+          <!-- Questions injected here -->
+        </div>
+        <button type="button" class="btn btn-sm btn-secondary mt-2" onclick="addQuestionField()">+ Add Question</button>
+      </div>
+
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" onclick="hideAssessmentModal()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Assessment</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- View Details Modal -->
+<div id="viewModal" class="modal">
+  <div class="modal-content">
+    <span class="close-button" onclick="document.getElementById('viewModal').style.display='none'">×</span>
+    <h2 id="viewTitle"></h2>
+    <div class="details-grid">
+      <div class="detail-item">
+        <div class="detail-label">Subject</div>
+        <div class="detail-value" id="viewSubject"></div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Type</div>
+        <div class="detail-value" id="viewType"></div>
+      </div>
+      <div class="detail-item">
+        <div class="detail-label">Max Marks</div>
+        <div class="detail-value" id="viewMaxMarks"></div>
+      </div>
+    </div>
+
+    <div class="mt-4">
+      <strong>Description:</strong>
+      <p id="viewDesc" class="text-muted"></p>
+    </div>
+
+    <div id="viewQuestions" class="mt-3"
+      style="display:none; background: var(--bg-tertiary); border-radius: 8px; padding: 1rem;">
+      <strong>Questions:</strong>
+      <ol id="viewQuestionsList" class="pl-3"></ol>
+    </div>
+
+    <div id="viewFile" class="mt-3" style="display:none;">
+      <strong>Attached File:</strong>
+      <a id="viewFileLink" href="#" class="btn btn-sm btn-outline-primary" target="_blank">Download Question Paper</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', loadAssessments);
+
+  async function loadAssessments() {
+    const subjectId = document.getElementById('subjectFilter').value;
+    const type = document.getElementById('typeFilter').value;
+
+    try {
+      const response = await fetch("{{ url_for('faculty.list_assessments') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject_id: subjectId, type: type })
+      });
+      const data = await response.json();
+      renderAssessments(data.assessments);
+    } catch (e) {
+      console.error("Error loading assessments:", e);
+    }
+  }
+
+  function renderAssessments(assessments) {
+    const tbody = document.getElementById('assessmentsTableBody');
+    if (assessments.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="text-center">No assessments found.</td></tr>';
+      return;
+    }
+
+    const now = new Date();
+
+    tbody.innerHTML = assessments.map(a => {
+      let status = 'Active';
+      let badgeClass = 'badge-info';
+
+      return `
+        <tr>
+            <td><strong>${a.title}</strong></td>
+            <td>${a.subject_name}</td>
+            <td>${formatType(a.type)}</td>
+            <td><span class="badge ${badgeClass}">${status}</span></td>
+            <td>
+                <button class="btn btn-sm btn-secondary" onclick="viewAssessment(${a.id})">👁️</button>
+                <button class="btn btn-sm btn-primary" onclick="editAssessment(${a.id})">✏️</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteAssessment(${a.id})">🗑️</button>
+            </td>
+        </tr>
+    `}).join('');
+  }
+
+  function formatType(type) {
+    return type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+  }
+
+  // --- Modal Logic ---
+
+  function openAssessmentModal() {
+    document.getElementById('assessmentForm').reset();
+    document.getElementById('assessmentId').value = '';
+    document.getElementById('modalTitle').textContent = 'Create Assessment';
+    document.getElementById('currentFileText').textContent = '';
+    document.getElementById('questionsContainer').innerHTML = '';
+    handleTypeChange();
+    document.getElementById('assessmentModal').style.display = 'flex';
+  }
+
+  function hideAssessmentModal() {
+    document.getElementById('assessmentModal').style.display = 'none';
+  }
+
+  function handleTypeChange() {
+    const type = document.getElementById('assType').value;
+    const fileSection = document.getElementById('fileUploadSection');
+    const questionsSection = document.getElementById('questionsSection');
+
+    fileSection.style.display = 'none';
+    questionsSection.style.display = 'none';
+
+    if (type === 'assignment_question_paper') {
+      fileSection.style.display = 'block';
+    } else if (type === 'typed_questions') {
+      questionsSection.style.display = 'block';
+      if (document.getElementById('questionsContainer').children.length === 0) {
+        addQuestionField();
+      }
+    }
+  }
+
+  function addQuestionField(value = '') {
+    const container = document.getElementById('questionsContainer');
+    const div = document.createElement('div');
+    div.className = 'question-row';
+    div.style.marginBottom = '5px';
+    div.style.display = 'flex';
+    div.style.gap = '5px';
+
+    div.innerHTML = `
+        <input type="text" class="form-input question-input" value="${value}" placeholder="Enter question..." required style="flex:1;">
+        <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">×</button>
+    `;
+    container.appendChild(div);
+  }
+
+  // --- CRUD Operations ---
+
+  document.getElementById('assessmentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+    const id = document.getElementById('assessmentId').value;
+    if (id) formData.append('id', id);
+
+    formData.append('title', document.getElementById('assTitle').value);
+    formData.append('subject_id', document.getElementById('assSubject').value);
+    formData.append('type', document.getElementById('assType').value);
+    formData.append('max_marks', document.getElementById('assMaxMarks').value);
+    formData.append('description', document.getElementById('assDesc').value);
+
+    const type = document.getElementById('assType').value;
+
+    if (type === 'assignment_question_paper') {
+      const file = document.getElementById('assFile').files[0];
+      if (file) formData.append('file', file);
+    } else if (type === 'typed_questions') {
+      const questions = Array.from(document.querySelectorAll('.question-input')).map(i => i.value);
+      formData.append('questions', JSON.stringify(questions));
+    }
+
+    try {
+      const response = await fetch("{{ url_for('faculty.save_assessment') }}", {
+        method: 'POST',
+        body: formData
+      });
+      const res = await response.json();
+
+      if (response.ok) {
+        alert(res.message);
+        hideAssessmentModal();
+        loadAssessments();
+      } else {
+        alert(res.error);
+      }
+    } catch (e) {
+      alert("Save failed.");
+    }
+  });
+
+  async function editAssessment(id) {
+    try {
+      const response = await fetch("{{ url_for('faculty.get_assessment_details') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+      });
+      const data = await response.json();
+
+      if (data.error) { alert(data.error); return; }
+
+      document.getElementById('assessmentId').value = data.id;
+      document.getElementById('assTitle').value = data.title;
+      document.getElementById('assSubject').value = data.subject_id;
+      document.getElementById('assType').value = data.type;
+      document.getElementById('assMaxMarks').value = data.max_marks;
+      document.getElementById('assDesc').value = data.description;
+      document.getElementById('modalTitle').textContent = 'Edit Assessment';
+
+      handleTypeChange();
+
+      if (data.type === 'typed_questions' && data.questions) {
+        const container = document.getElementById('questionsContainer');
+        container.innerHTML = '';
+        JSON.parse(data.questions).forEach(q => addQuestionField(q));
+      } else if (data.type === 'assignment_question_paper' && data.file_name) {
+        document.getElementById('currentFileText').textContent = `Current file: ${data.file_name}`;
+      }
+
+      document.getElementById('assessmentModal').style.display = 'flex';
+
+    } catch (e) {
+      console.error(e);
+      alert("Error fetching details.");
+    }
+  }
+
+  async function viewAssessment(id) {
+    try {
+      const response = await fetch("{{ url_for('faculty.get_assessment_details') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+      });
+      const data = await response.json();
+
+      document.getElementById('viewTitle').textContent = data.title;
+      document.getElementById('viewSubject').textContent = data.subject_name;
+      document.getElementById('viewType').textContent = formatType(data.type);
+      document.getElementById('viewMaxMarks').textContent = data.max_marks;
+      document.getElementById('viewDesc').textContent = data.description || 'No description.';
+
+      const qSection = document.getElementById('viewQuestions');
+      const fSection = document.getElementById('viewFile');
+      qSection.style.display = 'none';
+      fSection.style.display = 'none';
+
+      if (data.type === 'typed_questions' && data.questions) {
+        const list = document.getElementById('viewQuestionsList');
+        list.innerHTML = '';
+        JSON.parse(data.questions).forEach(q => {
+          const li = document.createElement('li');
+          li.textContent = q;
+          list.appendChild(li);
+        });
+        qSection.style.display = 'block';
+      } else if (data.type === 'assignment_question_paper' && data.resource_id) {
+        document.getElementById('viewFileLink').href = `/faculty/resources/download/${data.resource_id}`;
+        fSection.style.display = 'block';
+      }
+
+      document.getElementById('viewModal').style.display = 'flex';
+    } catch (e) {
+      alert("Error viewing details.");
+    }
+  }
+
+  async function deleteAssessment(id) {
+    if (!confirm("Delete this assessment?")) return;
+    try {
+      const response = await fetch("{{ url_for('faculty.delete_assessment') }}", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: id })
+      });
+      if (response.ok) {
+        loadAssessments();
+      } else {
+        alert("Failed to delete.");
+      }
+    } catch (e) {
+      alert("Error deleting.");
+    }
+  }
+</script>
+{% endblock %}

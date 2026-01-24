@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Attendance Details: {{ subject.name }} | CampusIQ{% endblock %}
+
+{% block content %}
+<div id="app" class="app-shell">
+    {% set active_page = 'dashboard' %}
+    {% include 'includes/student_sidebar.html' %}
+
+    <main class="main">
+        <header class="topbar">
+            <div class="header-title">
+                <h2 style="font-size: 1.25rem; font-weight: 600; color: var(--text-primary); margin: 0;">Attendance
+                    Details</h2>
+            </div>
+            <div class="user-area">
+                <span class="text-muted" style="font-size: 0.9em; margin-right: 15px;">{{ today }}</span>
+                <a href="{{ url_for('auth.logout') }}" class="logout-btn">Logout</a>
+            </div>
+        </header>
+
+        <section class="content-area">
+            <div class="action-bar" style="margin-bottom: 20px;">
+                <a href="{{ url_for('student.dashboard') }}" class="btn btn-secondary">
+                    <span class="action-icon">←</span> Back to Dashboard
+                </a>
+            </div>
+
+            <div class="page-header">
+                <h1>{{ subject.name }}</h1>
+                <p class="page-subtitle">{{ subject.code }} • Attendance Report</p>
+            </div>
+
+            <!-- Stats Overview -->
+            <div class="dashboard-card" style="margin-bottom: 30px;">
+                <div style="display: flex; gap: 40px; align-items: center;">
+                    <div>
+                        <h4 style="margin:0; color:var(--text-secondary);">Your Attendance</h4>
+                        {% if stats.percentage >= 75 %}
+                        <div style="font-size: 3rem; font-weight: 800; color: var(--success-color);">
+                            {{ stats.percentage }}%
+                        </div>
+                        {% else %}
+                        <div style="font-size: 3rem; font-weight: 800; color: var(--error-color);">
+                            {{ stats.percentage }}%
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div style="display: flex; gap: 30px;">
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Total Classes</div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">{{ stats.total }}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Present</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--success-color);">{{
+                                stats.present }}</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 0.9rem; color: var(--text-secondary);">Absent</div>
+                            <div style="font-size: 1.5rem; font-weight: 700; color: var(--error-color);">{{ stats.absent
+                                }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Logs -->
+            <div class="dashboard-card">
+                <h3>Attendance Log</h3>
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Time</th>
+                                <th>Status</th>
+                                <th>Reason / Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if logs %}
+                            {% for log in logs %}
+                            <tr>
+                                <td>{{ log.date }}</td>
+                                <td>{{ log.time }}</td>
+                                <td>
+                                    {% if log.status|lower == 'present' %}
+                                    <span class="badge badge-success">Present</span>
+                                    {% else %}
+                                    <span class="badge badge-danger">Absent</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ log.reason or '-' }}</td>
+                            </tr>
+                            {% endfor %}
+                            {% else %}
+                            <tr>
+                                <td colspan="4" class="text-center">No attendance records found.</td>
+                            </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+{% endblock %}
